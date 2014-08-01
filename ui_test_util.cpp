@@ -224,10 +224,10 @@ namespace ui_test
 		BITMAPINFOHEADER  bi;
 
 		hwindowDC = GetDC(hwnd);
-		hwindowCompatibleDC=CreateCompatibleDC(hwindowDC);
+		hwindowCompatibleDC = CreateCompatibleDC(hwindowDC);
 		SetStretchBltMode(hwindowCompatibleDC,COLORONCOLOR);  
 
-		RECT windowsize;    // get the height and width of the screen
+		RECT windowsize;    
 		GetClientRect(hwnd, &windowsize);
 
 		srcheight = windowsize.bottom;
@@ -251,11 +251,9 @@ namespace ui_test
 		bi.biClrUsed = 0;    
 		bi.biClrImportant = 0;
 
-		// use the previously created device context with the bitmap
 		SelectObject(hwindowCompatibleDC, hbwindow);
-		// copy from the window device context to the bitmap device context
-		StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, 0, 0, srcwidth, srcheight, SRCCOPY); //change SRCCOPY to NOTSRCCOPY for wacky colors !
-		GetDIBits(hwindowCompatibleDC,hbwindow,0,height,src.data,(BITMAPINFO *)&bi,DIB_RGB_COLORS);  //copy from hwindowCompatibleDC to hbwindow
+		StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, 0, 0, srcwidth, srcheight, SRCCOPY); 
+		GetDIBits(hwindowCompatibleDC,hbwindow,0,height,src.data,(BITMAPINFO *)&bi,DIB_RGB_COLORS); 
 		
 		DeleteObject (hbwindow); 
 		DeleteDC(hwindowCompatibleDC); 
@@ -271,15 +269,15 @@ namespace ui_test
 		DWORD absX = windowsize.left + wndX, absY = windowsize.top + wndY;
 		//mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP | MOUSEEVENTF_ABSOLUTE, absX, absY, 0, 0);
 		SetCursorPos(absX, absY);
-		INPUT    Input = {0};													// Create our input.
+		INPUT Input = {0};													
 
-		Input.type        = INPUT_MOUSE;									// Let input know we are using the mouse.
-		Input.mi.dwFlags  = MOUSEEVENTF_LEFTDOWN;							// We are setting left mouse button down.
-		SendInput( 1, &Input, sizeof(INPUT) );								// Send the input.
+		Input.type        = INPUT_MOUSE;									
+		Input.mi.dwFlags  = MOUSEEVENTF_LEFTDOWN;							
+		SendInput(1, &Input, sizeof(INPUT));								
 
-		ZeroMemory(&Input,sizeof(INPUT));									// Fills a block of memory with zeros.
-		Input.type        = INPUT_MOUSE;									// Let input know we are using the mouse.
-		Input.mi.dwFlags  = MOUSEEVENTF_LEFTUP;								// We are setting left mouse button up.
-		SendInput( 1, &Input, sizeof(INPUT) );
+		ZeroMemory(&Input,sizeof(INPUT));									
+		Input.type        = INPUT_MOUSE;									
+		Input.mi.dwFlags  = MOUSEEVENTF_LEFTUP;								
+		SendInput(1, &Input, sizeof(INPUT));
 	}
 }
