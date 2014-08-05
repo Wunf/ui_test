@@ -25,6 +25,13 @@ namespace ui_test
 	void GetObjectClass(IAccessible * pacc, char * szObjClass, int size);
 	// MSAA util end
 
+	void SetDisplayMatch();
+	void SetNotDisplayMatch();
+	cv::Mat TakeScreenShot();
 	cv::Mat HWnd2Mat(HWND hwnd);
+	void DisPlayImg(cv::Mat img);
+	cv::Rect FindUIRect(char * uiImgName);
 	void MouseClick(HWND hwnd, DWORD x, DWORD y);
+	BOOL ClickBtn(char * wndName, char * btnImgName);
+	BOOL ExpectUI(char * wndName, char * expUiImg);
 }

@@ -1,8 +1,14 @@
 #include "ui_test_util.h"
 #include <comutil.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <iostream>
 
 namespace ui_test 
 {
+	bool displaymatch = false;
+	const float errAcceptance = 20000000.f;
+
 	BOOL FindChildByInfo(
 		IAccessible* paccParent,
 		LPSTR szName, 
@@ -213,7 +219,69 @@ namespace ui_test
 		if(S_OK == (hr = WindowFromAccessibleObject(pacc, &tempWnd)))
 			GetClassName(tempWnd, szObjClass, size);
 	}
-	
+
+	void SetDisplayMatch()
+	{
+		displaymatch = true;
+	}
+
+	void SetNotDisplayMatch()
+	{
+		displaymatch = false;
+	}
+
+	cv::Mat TakeScreenShot()
+	{
+		HDC hwindowDC, hwindowCompatibleDC;
+
+		int height, width, srcheight, srcwidth;
+		HBITMAP hbwindow;
+		cv::Mat src;
+		BITMAPINFOHEADER  bi;
+
+		hwindowDC = GetDC(NULL);
+		hwindowCompatibleDC = CreateCompatibleDC(hwindowDC);
+		SetStretchBltMode(hwindowCompatibleDC,COLORONCOLOR);  
+
+		RECT windowsize;    
+		windowsize.left = 0;
+		windowsize.right = 0;
+		windowsize.right = GetSystemMetrics(SM_CXSCREEN);
+		windowsize.bottom = GetSystemMetrics(SM_CYSCREEN);
+
+		srcheight = windowsize.bottom;
+		srcwidth = windowsize.right;
+		height = windowsize.bottom;  //change this to whatever size you want to resize to
+		width = windowsize.right;
+
+		src.create(height,width,CV_8UC4);
+
+		// create a bitmap
+		hbwindow = CreateCompatibleBitmap(hwindowDC, width, height);
+		bi.biSize = sizeof(BITMAPINFOHEADER);    //http://msdn.microsoft.com/en-us/library/windows/window/dd183402%28v=vs.85%29.aspx
+		bi.biWidth = width;    
+		bi.biHeight = -height;  //this is the line that makes it draw upside down or not
+		bi.biPlanes = 1;    
+		bi.biBitCount = 32;    
+		bi.biCompression = BI_RGB;    
+		bi.biSizeImage = 0;  
+		bi.biXPelsPerMeter = 0;    
+		bi.biYPelsPerMeter = 0;    
+		bi.biClrUsed = 0;    
+		bi.biClrImportant = 0;
+
+		SelectObject(hwindowCompatibleDC, hbwindow);
+		StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, 0, 0, srcwidth, srcheight, SRCCOPY); 
+		GetDIBits(hwindowCompatibleDC,hbwindow,0,height,src.data,(BITMAPINFO *)&bi,DIB_RGB_COLORS); 
+
+		DeleteObject (hbwindow); 
+		DeleteDC(hwindowCompatibleDC); 
+
+		cv::cvtColor(src, src, CV_RGBA2RGB, 3);
+
+		return src;
+	}
+
 	cv::Mat HWnd2Mat(HWND hwnd)
 	{
 		HDC hwindowDC, hwindowCompatibleDC;
@@ -259,16 +327,72 @@ namespace ui_test
 		DeleteDC(hwindowCompatibleDC); 
 		ReleaseDC(hwnd, hwindowDC);
 
+		cv::cvtColor(src, src, CV_RGBA2RGB, 3);
+
 		return src;
 	}
 
-	void MouseClick(HWND hwnd, DWORD wndX, DWORD wndY)
+	void DisPlayImg(cv::Mat img)
+	{	
+		cv::namedWindow("img");
+		cv::moveWindow("img", 0, 0);
+		cv::imshow("img", img);
+		HWND hwnd = FindWindow(0, "img");
+		cv::waitKey(30);
+		Sleep(1000);
+		cv::destroyWindow("img");
+	}
+
+	cv::Rect FindUIRect(char * uiImgName)
 	{
-		RECT windowsize;    
-		GetWindowRect(hwnd, &windowsize);
-		DWORD absX = windowsize.left + wndX, absY = windowsize.top + wndY;
-		//mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP | MOUSEEVENTF_ABSOLUTE, absX, absY, 0, 0);
-		SetCursorPos(absX, absY);
+		cv::Rect uiRect;
+		cv::Mat templ = cv::imread(uiImgName);
+		cv::Mat wndImg = TakeScreenShot();
+
+		if(templ.data == NULL)
+		{
+			std::cerr << "load ui templ error." << std::endl;
+			return uiRect;
+		}
+		cv::Mat result;
+		try{
+			cv::matchTemplate(wndImg, templ, result, CV_TM_SQDIFF);
+		}
+		catch(cv::Exception)
+		{
+			return uiRect;
+		}
+		if(result.data == NULL)
+		{
+			std::cerr << "templ match error." << std::endl;
+			return uiRect;
+		}
+		double minVal, maxVal;
+		cv::Point minLoc, maxLoc;
+		cv::minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc);
+		cv::imwrite("test1.bmp", wndImg);
+		cv::imwrite("test2.bmp", templ);
+		if(minVal >= errAcceptance)
+		{
+			std::cerr << "Try to match ui failed..." << std::endl;
+			return uiRect;
+		}
+		uiRect = cv::Rect(minLoc.x, minLoc.y, templ.cols, templ.rows);
+
+		cv::rectangle(wndImg, uiRect, cv::Scalar(0.0f, 0.0f, 255.0f, 0.0f), 2);
+
+		if(displaymatch)
+			DisPlayImg(wndImg);
+
+		return uiRect;
+	}
+
+	void MouseClick(HWND hwnd, DWORD x, DWORD y)
+	{
+		SetForegroundWindow(hwnd);
+		Sleep(250);
+		SetCursorPos(x, y);
+		Sleep(250);
 		INPUT Input = {0};													
 
 		Input.type        = INPUT_MOUSE;									
@@ -279,5 +403,64 @@ namespace ui_test
 		Input.type        = INPUT_MOUSE;									
 		Input.mi.dwFlags  = MOUSEEVENTF_LEFTUP;								
 		SendInput(1, &Input, sizeof(INPUT));
+		Sleep(250);
+	}
+
+	BOOL ClickBtn(char * wndName, char * btnImgName)
+	{
+		HWND hwnd = FindWindow(NULL, wndName);
+		if(!hwnd)
+		{
+			std::cerr << "Cannot find window." << std::endl;
+			return FALSE;
+		}
+
+		SetForegroundWindow(hwnd);
+		Sleep(250);
+		cv::Rect btnRect = FindUIRect(btnImgName);
+		if(btnRect.width)
+			std::cout << "Button matched!" << std::endl;
+		else
+		{
+			std::cout << "Cannot match button." << std::endl;
+			return FALSE;
+		}
+		MouseClick(hwnd, btnRect.x + btnRect.width / 2, btnRect.y + btnRect.height / 2);
+		return TRUE;
+	}
+
+	BOOL ExpectUI(char * wndName, char * expUiImg)
+	{
+		BOOL flag = FALSE;
+		int n = 10;
+		while(n--)
+		{
+			HWND hwnd = FindWindow(NULL, wndName);
+			if(!hwnd)
+			{
+				std::cerr << "Finding window..." << std::endl;
+				Sleep(750);
+				continue;
+			}
+
+			SetForegroundWindow(hwnd);
+			Sleep(250);
+			cv::Rect uiRect = FindUIRect(expUiImg);
+			if(uiRect.width)
+			{
+				flag = TRUE;
+				std::cout << "Ui matched!" << std::endl;
+				break;
+			}
+		}
+
+		if(!flag)
+		{
+			std::cerr << "Expected ui doesn't match. Maybe a bug occurred." << std::endl;
+			cv::imwrite("bug_screen.bmp", TakeScreenShot());
+			cv::imwrite("bug_expectedui.bmp", cv::imread(expUiImg));
+		}
+
+		return flag;
 	}
 }
