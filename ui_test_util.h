@@ -27,11 +27,16 @@ namespace ui_test
 
 	void SetDisplayMatch();
 	void SetNotDisplayMatch();
+	void SetButtonBlink();
+	void SetNotButtonBlink();
+
 	cv::Mat TakeScreenShot();
 	cv::Mat HWnd2Mat(HWND hwnd);
 	void DisPlayImg(cv::Mat img);
 	cv::Rect FindUIRect(char * uiImgName);
+	void PressKey(WORD vk);
 	void MouseClick(HWND hwnd, DWORD x, DWORD y);
 	BOOL ClickBtn(char * wndName, char * btnImgName);
 	BOOL ExpectUI(char * wndName, char * expUiImg);
+	void DrawRectangleOnTransparent(HWND hWnd, const RECT& rc);
 }

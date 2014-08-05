@@ -4,9 +4,9 @@
 
 int main(int argc, char * argv[])
 {
-	ui_test::SetDisplayMatch();
+	ui_test::SetNotDisplayMatch();
 
-	int n = 20;
+	int n = 1;
 	while(n--)
 	{
 		WinExec("D:\\work\\trunk\\program\\misc\\dailybuild\\NGP.exe", SW_SHOW);
@@ -20,9 +20,7 @@ int main(int argc, char * argv[])
 			break;
 		if(!ui_test::ExpectUI("网易游戏平台 安装", "templ/expected_installing.bmp"))
 			break;
-		if(!ui_test::ExpectUI("网易游戏平台 安装", "templ/expected_installing_text_change.bmp"))
-			break;
-		Sleep(2000);
+		Sleep(5000);
 		if(!ui_test::ExpectUI("NGP", "templ/expected_ngp.bmp"))
 			break;
 		if(!ui_test::ClickBtn("NGP", "templ/ngp_close_btn_templ.bmp"))

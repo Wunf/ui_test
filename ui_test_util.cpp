@@ -7,6 +7,7 @@
 namespace ui_test 
 {
 	bool displaymatch = false;
+	bool buttonblink = true;
 	const float errAcceptance = 20000000.f;
 
 	BOOL FindChildByInfo(
@@ -230,6 +231,16 @@ namespace ui_test
 		displaymatch = false;
 	}
 
+	void SetButtonBlink()
+	{
+		buttonblink = true;
+	}
+
+	void SetNotButtonBlink()
+	{
+		buttonblink = false;
+	}
+
 	cv::Mat TakeScreenShot()
 	{
 		HDC hwindowDC, hwindowCompatibleDC;
@@ -322,7 +333,7 @@ namespace ui_test
 		SelectObject(hwindowCompatibleDC, hbwindow);
 		StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, 0, 0, srcwidth, srcheight, SRCCOPY); 
 		GetDIBits(hwindowCompatibleDC,hbwindow,0,height,src.data,(BITMAPINFO *)&bi,DIB_RGB_COLORS); 
-		
+
 		DeleteObject (hbwindow); 
 		DeleteDC(hwindowCompatibleDC); 
 		ReleaseDC(hwnd, hwindowDC);
@@ -334,10 +345,23 @@ namespace ui_test
 
 	void DisPlayImg(cv::Mat img)
 	{	
-		cv::namedWindow("img");
+		cv::namedWindow("img", CV_WINDOW_NORMAL);
+		cv::setWindowProperty("img", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
+		cv::imshow("img", img);
+		/*cv::namedWindow("img", CV_WINDOW_AUTOSIZE);
 		cv::moveWindow("img", 0, 0);
+		cv::setWindowProperty("img", CV_WINDOW_FULLSCREEN, CV_WINDOW_FULLSCREEN);
 		cv::imshow("img", img);
 		HWND hwnd = FindWindow(0, "img");
+		unsigned int flags = (SWP_SHOWWINDOW | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER);
+		flags &= ~SWP_NOSIZE;
+		unsigned int x = 0;
+		unsigned int y = 0;
+		unsigned int w = img.cols;
+		unsigned int h = img.rows;
+		SetWindowPos(hwnd, HWND_NOTOPMOST, x, y, w, h, flags);
+		SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_TOPMOST);
+		ShowWindow(hwnd, SW_SHOW);*/
 		cv::waitKey(30);
 		Sleep(1000);
 		cv::destroyWindow("img");
@@ -358,7 +382,7 @@ namespace ui_test
 		try{
 			cv::matchTemplate(wndImg, templ, result, CV_TM_SQDIFF);
 		}
-		catch(cv::Exception)
+		catch(...)
 		{
 			return uiRect;
 		}
@@ -382,17 +406,46 @@ namespace ui_test
 		cv::rectangle(wndImg, uiRect, cv::Scalar(0.0f, 0.0f, 255.0f, 0.0f), 2);
 
 		if(displaymatch)
+		{
 			DisPlayImg(wndImg);
+		}
 
 		return uiRect;
 	}
 
 	void MouseClick(HWND hwnd, DWORD x, DWORD y)
 	{
+		// “∆∂Ø Û±Í
 		SetForegroundWindow(hwnd);
-		Sleep(250);
+		//Sleep(100);
 		SetCursorPos(x, y);
-		Sleep(250);
+
+		// ª≠…¡À∏øÚ
+		if(buttonblink)
+		{
+			POINT point;
+			point.x = x;
+			point.y = y;
+			HWND uihwnd = WindowFromPoint(point);
+			HWND deskhwnd = GetDesktopWindow();
+			HDC deskdc = GetWindowDC(deskhwnd);
+			RECT uirect;
+			GetWindowRect(uihwnd, &uirect);
+			HGDIOBJ newpen = CreatePen(PS_INSIDEFRAME, 6, RGB(0, 0, 0));
+			SelectObject(deskdc, newpen);
+			int n = 5;
+			while(n--)
+			{
+				Rectangle(deskdc, uirect.left, uirect.top, uirect.right, uirect.bottom);	
+				Sleep(100);
+			}
+			DeleteObject(newpen);
+			//DrawRectangleOnTransparent(uihwnd, uirect);
+			//Sleep(2000);
+			ReleaseDC(deskhwnd, deskdc);
+		}
+
+		// µ•ª˜ Û±Í
 		INPUT Input = {0};													
 
 		Input.type        = INPUT_MOUSE;									
@@ -403,7 +456,21 @@ namespace ui_test
 		Input.type        = INPUT_MOUSE;									
 		Input.mi.dwFlags  = MOUSEEVENTF_LEFTUP;								
 		SendInput(1, &Input, sizeof(INPUT));
-		Sleep(250);
+	}
+
+	void PressKey(WORD vk)
+	{
+		INPUT Input = {0};
+
+		Input.type = INPUT_KEYBOARD;
+		Input.ki.wVk = vk;
+		SendInput(1, &Input, sizeof(INPUT));
+
+		ZeroMemory(&Input,sizeof(INPUT));
+		Input.type = INPUT_KEYBOARD;
+		Input.ki.dwFlags = KEYEVENTF_KEYUP;
+		SendInput(1, &Input, sizeof(INPUT));
+		//Sleep(100);
 	}
 
 	BOOL ClickBtn(char * wndName, char * btnImgName)
@@ -416,7 +483,7 @@ namespace ui_test
 		}
 
 		SetForegroundWindow(hwnd);
-		Sleep(250);
+		//Sleep(100);
 		cv::Rect btnRect = FindUIRect(btnImgName);
 		if(btnRect.width)
 			std::cout << "Button matched!" << std::endl;
@@ -438,13 +505,13 @@ namespace ui_test
 			HWND hwnd = FindWindow(NULL, wndName);
 			if(!hwnd)
 			{
-				std::cerr << "Finding window..." << std::endl;
-				Sleep(750);
+				std::cout << "Finding window..." << std::endl;
+				Sleep(1000);
 				continue;
 			}
 
 			SetForegroundWindow(hwnd);
-			Sleep(250);
+			//Sleep(100);
 			cv::Rect uiRect = FindUIRect(expUiImg);
 			if(uiRect.width)
 			{
@@ -462,5 +529,69 @@ namespace ui_test
 		}
 
 		return flag;
+	}
+
+	void DrawRectangleOnTransparent(HWND hWnd, const RECT& rc)
+	{
+		HDC hDC = GetDC(hWnd);
+		if (hDC)
+		{
+			RECT rcClient;
+			GetClientRect(hWnd, &rcClient);
+
+			BITMAPINFO bmi = { 0 };
+			bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+			bmi.bmiHeader.biBitCount = 32;
+			bmi.bmiHeader.biWidth = rcClient.right;
+			bmi.bmiHeader.biHeight = -rcClient.bottom;
+
+			LPVOID pBits;
+			HBITMAP hBmpSource = CreateDIBSection(hDC, &bmi, DIB_RGB_COLORS, &pBits, 0, 0);
+			DWORD a = GetLastError();
+			if (hBmpSource)
+			{
+				HDC hDCSource = CreateCompatibleDC(hDC);
+				if (hDCSource)
+				{
+					// fill the background in red
+					HGDIOBJ hOldBmp = SelectObject(hDCSource, hBmpSource);
+					HBRUSH hBsh = CreateSolidBrush(RGB(0,0,255));
+					FillRect(hDCSource, &rcClient, hBsh);
+					DeleteObject(hBsh);
+
+					// draw the rectangle in black
+					HGDIOBJ hOldBsh = SelectObject(hDCSource, GetStockObject(NULL_BRUSH));
+					HGDIOBJ hOldPen = SelectObject(hDCSource, CreatePen(PS_SOLID, 2, RGB(0,0,0)));
+					Rectangle(hDCSource, rc.left, rc.top, rc.right, rc.bottom);
+					DeleteObject(SelectObject(hDCSource, hOldPen));
+					SelectObject(hDCSource, hOldBsh);
+
+					GdiFlush();
+
+					// fix up the alpha channel
+					DWORD* pPixel = reinterpret_cast<DWORD*>(pBits);
+					for (int y = 0; y < rcClient.bottom; y++)
+					{
+						for (int x = 0; x < rcClient.right; x++, pPixel++)
+						{
+							if ((*pPixel & 0x00ff0000) == 0x00ff0000)
+								*pPixel |= 0x01000000; // transparent
+							else
+								*pPixel |= 0xff000000; // solid
+						}
+					}
+
+					// Update the layered window
+					POINT pt = { 0 };
+					BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+					UpdateLayeredWindow(hWnd, hDC, NULL, NULL, hDCSource, &pt, 0, &bf, ULW_ALPHA);
+
+					SelectObject(hDCSource, hOldBmp);
+					DeleteDC(hDCSource);
+				}
+				DeleteObject(hBmpSource);
+			}
+			ReleaseDC(hWnd, hDC);
+		}
 	}
 }
