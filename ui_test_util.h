@@ -33,9 +33,10 @@ namespace ui_test
 	cv::Mat TakeScreenShot();
 	cv::Mat HWnd2Mat(HWND hwnd);
 	void DisPlayImg(cv::Mat img);
+	void BlinkUI(int times); // 根据当前鼠标位置选择UI
 	cv::Rect FindUIRect(char * uiImgName);
 	void PressKey(WORD vk);
-	void MouseClick(HWND hwnd, DWORD x, DWORD y);
+	void MouseClick();
 	BOOL ClickBtn(char * wndName, char * btnImgName);
 	BOOL ExpectUI(char * wndName, char * expUiImg);
 	void DrawRectangleOnTransparent(HWND hWnd, const RECT& rc);

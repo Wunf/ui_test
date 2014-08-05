@@ -367,6 +367,28 @@ namespace ui_test
 		cv::destroyWindow("img");
 	}
 
+	void BlinkUI(int times)
+	{
+		POINT point;
+		GetCursorPos(&point);
+		HWND uihwnd = WindowFromPoint(point);
+		HWND deskhwnd = GetDesktopWindow();
+		HDC deskdc = GetWindowDC(deskhwnd);
+		RECT uirect;
+		GetWindowRect(uihwnd, &uirect);
+		HGDIOBJ newpen = CreatePen(PS_INSIDEFRAME, 6, RGB(0, 0, 0));
+		SelectObject(deskdc, newpen);
+		while(times--)
+		{
+			Rectangle(deskdc, uirect.left, uirect.top, uirect.right, uirect.bottom);	
+			Sleep(100);
+		}
+		DeleteObject(newpen);
+		//DrawRectangleOnTransparent(uihwnd, uirect);
+		//Sleep(2000);
+		ReleaseDC(deskhwnd, deskdc);
+	}
+
 	cv::Rect FindUIRect(char * uiImgName)
 	{
 		cv::Rect uiRect;
@@ -413,38 +435,8 @@ namespace ui_test
 		return uiRect;
 	}
 
-	void MouseClick(HWND hwnd, DWORD x, DWORD y)
+	void MouseClick()
 	{
-		// “∆∂Ø Û±Í
-		SetForegroundWindow(hwnd);
-		//Sleep(100);
-		SetCursorPos(x, y);
-
-		// ª≠…¡À∏øÚ
-		if(buttonblink)
-		{
-			POINT point;
-			point.x = x;
-			point.y = y;
-			HWND uihwnd = WindowFromPoint(point);
-			HWND deskhwnd = GetDesktopWindow();
-			HDC deskdc = GetWindowDC(deskhwnd);
-			RECT uirect;
-			GetWindowRect(uihwnd, &uirect);
-			HGDIOBJ newpen = CreatePen(PS_INSIDEFRAME, 6, RGB(0, 0, 0));
-			SelectObject(deskdc, newpen);
-			int n = 5;
-			while(n--)
-			{
-				Rectangle(deskdc, uirect.left, uirect.top, uirect.right, uirect.bottom);	
-				Sleep(100);
-			}
-			DeleteObject(newpen);
-			//DrawRectangleOnTransparent(uihwnd, uirect);
-			//Sleep(2000);
-			ReleaseDC(deskhwnd, deskdc);
-		}
-
 		// µ•ª˜ Û±Í
 		INPUT Input = {0};													
 
@@ -475,6 +467,7 @@ namespace ui_test
 
 	BOOL ClickBtn(char * wndName, char * btnImgName)
 	{
+		// ≤È’“¥∞ø⁄
 		HWND hwnd = FindWindow(NULL, wndName);
 		if(!hwnd)
 		{
@@ -482,8 +475,8 @@ namespace ui_test
 			return FALSE;
 		}
 
+		// ∆•≈‰UI
 		SetForegroundWindow(hwnd);
-		//Sleep(100);
 		cv::Rect btnRect = FindUIRect(btnImgName);
 		if(btnRect.width)
 			std::cout << "Button matched!" << std::endl;
@@ -492,16 +485,27 @@ namespace ui_test
 			std::cout << "Cannot match button." << std::endl;
 			return FALSE;
 		}
-		MouseClick(hwnd, btnRect.x + btnRect.width / 2, btnRect.y + btnRect.height / 2);
+
+		// “∆∂Ø Û±Í
+		SetForegroundWindow(hwnd);
+		SetCursorPos(btnRect.x + btnRect.width / 2, btnRect.y + btnRect.height / 2);
+
+		// UIøÚ…¡À∏
+		BlinkUI(5);
+
+		//µ„ª˜
+		MouseClick();
+
 		return TRUE;
 	}
 
 	BOOL ExpectUI(char * wndName, char * expUiImg)
 	{
 		BOOL flag = FALSE;
-		int n = 10;
+		int n = 10; //  ß∞‹÷ÿ ‘¥Œ ˝
 		while(n--)
 		{
+			// ≤È’“¥∞ø⁄
 			HWND hwnd = FindWindow(NULL, wndName);
 			if(!hwnd)
 			{
@@ -510,13 +514,20 @@ namespace ui_test
 				continue;
 			}
 
+			// ∆•≈‰UI
 			SetForegroundWindow(hwnd);
-			//Sleep(100);
 			cv::Rect uiRect = FindUIRect(expUiImg);
 			if(uiRect.width)
 			{
 				flag = TRUE;
 				std::cout << "Ui matched!" << std::endl;
+
+				// “∆∂Ø Û±Í
+				SetForegroundWindow(hwnd);
+				SetCursorPos(uiRect.x, uiRect.y);
+
+				// UIøÚ…¡À∏
+				BlinkUI(5);
 				break;
 			}
 		}
