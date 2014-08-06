@@ -1,3 +1,6 @@
+#ifndef _UI_TEST_UTIL_H_
+#define _UI_TEST_UTIL_H_
+
 #include <windows.h>
 #include <atlbase.h>
 #include <atlcom.h>
@@ -27,8 +30,8 @@ namespace ui_test
 
 	void SetDisplayMatch();
 	void SetNotDisplayMatch();
-	void SetButtonBlink();
-	void SetNotButtonBlink();
+	void SetUiBlink();
+	void SetNotUiBlink();
 
 	cv::Mat TakeScreenShot();
 	cv::Mat HWnd2Mat(HWND hwnd);
@@ -37,7 +40,7 @@ namespace ui_test
 	cv::Rect FindUIRect(char * uiImgName);
 	void PressKey(WORD vk);
 	void MouseClick();
-	BOOL ClickBtn(char * wndName, char * btnImgName);
-	BOOL ExpectUI(char * wndName, char * expUiImg);
 	void DrawRectangleOnTransparent(HWND hWnd, const RECT& rc);
 }
+
+#endif

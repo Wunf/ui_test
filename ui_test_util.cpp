@@ -7,8 +7,9 @@
 namespace ui_test 
 {
 	bool displaymatch = false;
-	bool buttonblink = true;
+	bool uiblink = false;
 	const float errAcceptance = 20000000.f;
+	
 
 	BOOL FindChildByInfo(
 		IAccessible* paccParent,
@@ -231,14 +232,14 @@ namespace ui_test
 		displaymatch = false;
 	}
 
-	void SetButtonBlink()
+	void SetUiBlink()
 	{
-		buttonblink = true;
+		uiblink = true;
 	}
 
-	void SetNotButtonBlink()
+	void SetNotuiBlink()
 	{
-		buttonblink = false;
+		uiblink = false;
 	}
 
 	cv::Mat TakeScreenShot()
@@ -423,12 +424,11 @@ namespace ui_test
 			std::cerr << "Try to match ui failed..." << std::endl;
 			return uiRect;
 		}
-		uiRect = cv::Rect(minLoc.x, minLoc.y, templ.cols, templ.rows);
-
-		cv::rectangle(wndImg, uiRect, cv::Scalar(0.0f, 0.0f, 255.0f, 0.0f), 2);
+		uiRect = cv::Rect(minLoc.x, minLoc.y, templ.cols, templ.rows);	
 
 		if(displaymatch)
 		{
+			cv::rectangle(wndImg, uiRect, cv::Scalar(0.0f, 0.0f, 255.0f, 0.0f), 2);
 			DisPlayImg(wndImg);
 		}
 
@@ -465,83 +465,6 @@ namespace ui_test
 		//Sleep(100);
 	}
 
-	BOOL ClickBtn(char * wndName, char * btnImgName)
-	{
-		// ²éÕÒ´°¿Ú
-		HWND hwnd = FindWindow(NULL, wndName);
-		if(!hwnd)
-		{
-			std::cerr << "Cannot find window." << std::endl;
-			return FALSE;
-		}
-
-		// Æ¥ÅäUI
-		SetForegroundWindow(hwnd);
-		cv::Rect btnRect = FindUIRect(btnImgName);
-		if(btnRect.width)
-			std::cout << "Button matched!" << std::endl;
-		else
-		{
-			std::cout << "Cannot match button." << std::endl;
-			return FALSE;
-		}
-
-		// ÒÆ¶¯Êó±ê
-		SetForegroundWindow(hwnd);
-		SetCursorPos(btnRect.x + btnRect.width / 2, btnRect.y + btnRect.height / 2);
-
-		// UI¿òÉÁË¸
-		BlinkUI(5);
-
-		//µã»÷
-		MouseClick();
-
-		return TRUE;
-	}
-
-	BOOL ExpectUI(char * wndName, char * expUiImg)
-	{
-		BOOL flag = FALSE;
-		int n = 10; // Ê§°ÜÖØÊÔ´ÎÊý
-		while(n--)
-		{
-			// ²éÕÒ´°¿Ú
-			HWND hwnd = FindWindow(NULL, wndName);
-			if(!hwnd)
-			{
-				std::cout << "Finding window..." << std::endl;
-				Sleep(1000);
-				continue;
-			}
-
-			// Æ¥ÅäUI
-			SetForegroundWindow(hwnd);
-			cv::Rect uiRect = FindUIRect(expUiImg);
-			if(uiRect.width)
-			{
-				flag = TRUE;
-				std::cout << "Ui matched!" << std::endl;
-
-				// ÒÆ¶¯Êó±ê
-				SetForegroundWindow(hwnd);
-				SetCursorPos(uiRect.x, uiRect.y);
-
-				// UI¿òÉÁË¸
-				BlinkUI(5);
-				break;
-			}
-		}
-
-		if(!flag)
-		{
-			std::cerr << "Expected ui doesn't match. Maybe a bug occurred." << std::endl;
-			cv::imwrite("bug_screen.bmp", TakeScreenShot());
-			cv::imwrite("bug_expectedui.bmp", cv::imread(expUiImg));
-		}
-
-		return flag;
-	}
-
 	void DrawRectangleOnTransparent(HWND hWnd, const RECT& rc)
 	{
 		HDC hDC = GetDC(hWnd);
@@ -552,9 +475,10 @@ namespace ui_test
 
 			BITMAPINFO bmi = { 0 };
 			bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
-			bmi.bmiHeader.biBitCount = 32;
+			bmi.bmiHeader.biBitCount = 8;
+			bmi.bmiHeader.biCompression = BI_RGB;
 			bmi.bmiHeader.biWidth = rcClient.right;
-			bmi.bmiHeader.biHeight = -rcClient.bottom;
+			bmi.bmiHeader.biHeight = rcClient.bottom;
 
 			LPVOID pBits;
 			HBITMAP hBmpSource = CreateDIBSection(hDC, &bmi, DIB_RGB_COLORS, &pBits, 0, 0);
