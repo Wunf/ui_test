@@ -59,6 +59,11 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
+			
+			DWORD code;
+			GetExitCodeThread(hThread, &code);
+			if(code == 1)
+				PostQuitMessage(0);
 		}
 	}
 
@@ -277,6 +282,6 @@ DWORD WINAPI UiTestMainFunc(LPVOID)
 		if(!ClickBtn("NGP", "templ/ngp_close_btn_templ.bmp"))
 			break;*/
 	}
-	exit(1);
+
 	return 1;
 }
