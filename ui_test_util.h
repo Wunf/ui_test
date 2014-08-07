@@ -9,6 +9,7 @@
 namespace ui_test 
 {
 	// MSAA util
+	// use AccessibleObjectFromWindow first
 	BOOL FindChildByInfo(
 		IAccessible* paccParent, 
 		LPSTR szName, 
@@ -41,6 +42,9 @@ namespace ui_test
 	void PressKey(WORD vk);
 	void MouseClick();
 	void DrawRectangleOnTransparent(HWND hWnd, const RECT& rc);
+	void Init();
+	enum LogType{UTERROR, UTMESSAGE};
+	void Log(LogType logtype, const char * message, const char * other = NULL);
 }
 
 #endif

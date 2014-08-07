@@ -182,7 +182,7 @@ BOOL ClickBtn(char * wndName, char * btnImgName)
 	HWND hwnd = FindWindow(NULL, wndName);
 	if(!hwnd)
 	{
-		std::cerr << "Cannot find window." << std::endl;
+		ui_test::Log(ui_test::UTERROR, "Cannot find window:", wndName);
 		return FALSE;
 	}
 
@@ -192,12 +192,12 @@ BOOL ClickBtn(char * wndName, char * btnImgName)
 	if(UIRect.width)
 	{
 		RePaint();
-		std::cout << "Button matched!" << std::endl;
+		ui_test::Log(ui_test::UTMESSAGE, "Button matched:", btnImgName);
 		Sleep(1000);
 	}
 	else
 	{
-		std::cout << "Cannot match button." << std::endl;
+		ui_test::Log(ui_test::UTERROR, "Cannot match button:", btnImgName);
 		return FALSE;
 	}
 
@@ -225,7 +225,7 @@ BOOL ExpectUI(char * wndName, char * expUiImg)
 		HWND hwnd = FindWindow(NULL, wndName);
 		if(!hwnd)
 		{
-			std::cout << "Finding window..." << std::endl;
+			ui_test::Log(ui_test::UTMESSAGE, "Finding window...:", wndName);
 			Sleep(1000);
 			continue;
 		}
@@ -237,7 +237,7 @@ BOOL ExpectUI(char * wndName, char * expUiImg)
 		{
 			flag = TRUE;
 			RePaint();
-			std::cout << "Ui matched!" << std::endl;
+			ui_test::Log(ui_test::UTMESSAGE, "Ui matched:", expUiImg);
 			Sleep(1000);
 			break;
 		}
@@ -245,9 +245,9 @@ BOOL ExpectUI(char * wndName, char * expUiImg)
 
 	if(!flag)
 	{
-		std::cerr << "Expected ui doesn't match. Maybe a bug occurred." << std::endl;
+		ui_test::Log(ui_test::UTERROR, "Expected ui doesn't match. Maybe a bug occurred while matching:", expUiImg);
+		ui_test::Log(ui_test::UTERROR, "Saved current screen to bug_screen.bmp.");
 		cv::imwrite("bug_screen.bmp", ui_test::TakeScreenShot());
-		cv::imwrite("bug_expectedui.bmp", cv::imread(expUiImg));
 	}
 
 	return flag;
@@ -262,6 +262,9 @@ void RePaint()
 
 DWORD WINAPI UiTestMainFunc(LPVOID)
 {
+	// ./ui_test.log
+	ui_test::Init();
+
 	int n = 1;
 	while(n--)
 	{
@@ -270,7 +273,7 @@ DWORD WINAPI UiTestMainFunc(LPVOID)
 			break;
 		if(!ClickBtn("网易游戏平台 安装", "templ/ok_btn_templ.bmp"))
 			break;
-		/*if(!ExpectUI("网易游戏平台 安装", "templ/expected_install.bmp"))
+		if(!ExpectUI("网易游戏平台 安装", "templ/expected_install.bmp"))
 			break;
 		if(!ClickBtn("网易游戏平台 安装", "templ/install_btn_templ.bmp"))
 			break;
@@ -280,8 +283,9 @@ DWORD WINAPI UiTestMainFunc(LPVOID)
 		if(!ExpectUI("NGP", "templ/expected_ngp.bmp"))
 			break;
 		if(!ClickBtn("NGP", "templ/ngp_close_btn_templ.bmp"))
-			break;*/
+			break;
 	}
 
+	Log(ui_test::UTMESSAGE, "Finished.");
 	return 1;
 }

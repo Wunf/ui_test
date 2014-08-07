@@ -3,13 +3,14 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
+#include <fstream>
+#include <string>
 
 namespace ui_test 
 {
 	bool displaymatch = false;
 	bool uiblink = false;
 	const float errAcceptance = 20000000.f;
-	
 
 	BOOL FindChildByInfo(
 		IAccessible* paccParent,
@@ -349,20 +350,6 @@ namespace ui_test
 		cv::namedWindow("img", CV_WINDOW_NORMAL);
 		cv::setWindowProperty("img", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
 		cv::imshow("img", img);
-		/*cv::namedWindow("img", CV_WINDOW_AUTOSIZE);
-		cv::moveWindow("img", 0, 0);
-		cv::setWindowProperty("img", CV_WINDOW_FULLSCREEN, CV_WINDOW_FULLSCREEN);
-		cv::imshow("img", img);
-		HWND hwnd = FindWindow(0, "img");
-		unsigned int flags = (SWP_SHOWWINDOW | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER);
-		flags &= ~SWP_NOSIZE;
-		unsigned int x = 0;
-		unsigned int y = 0;
-		unsigned int w = img.cols;
-		unsigned int h = img.rows;
-		SetWindowPos(hwnd, HWND_NOTOPMOST, x, y, w, h, flags);
-		SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_TOPMOST);
-		ShowWindow(hwnd, SW_SHOW);*/
 		cv::waitKey(30);
 		Sleep(1000);
 		cv::destroyWindow("img");
@@ -398,30 +385,25 @@ namespace ui_test
 
 		if(templ.data == NULL)
 		{
-			std::cerr << "load ui templ error." << std::endl;
+			Log(UTERROR, "Load ui templ error.", uiImgName);
 			return uiRect;
 		}
 		cv::Mat result;
 		try{
 			cv::matchTemplate(wndImg, templ, result, CV_TM_SQDIFF);
 		}
-		catch(...)
+		catch(cv::Exception & e)
 		{
-			return uiRect;
-		}
-		if(result.data == NULL)
-		{
-			std::cerr << "templ match error." << std::endl;
+			Log(UTERROR, "OpenCV matchTemplate error.");
+			Log(UTERROR, e.msg.c_str());
 			return uiRect;
 		}
 		double minVal, maxVal;
 		cv::Point minLoc, maxLoc;
 		cv::minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc);
-		cv::imwrite("test1.bmp", wndImg);
-		cv::imwrite("test2.bmp", templ);
 		if(minVal >= errAcceptance)
 		{
-			std::cerr << "Try to match ui failed..." << std::endl;
+			Log(UTMESSAGE, "Tried to match ui failed, retrying...");
 			return uiRect;
 		}
 		uiRect = cv::Rect(minLoc.x, minLoc.y, templ.cols, templ.rows);	
@@ -528,5 +510,32 @@ namespace ui_test
 			}
 			ReleaseDC(hWnd, hDC);
 		}
+	}
+
+	void Init()
+	{
+		std::ofstream ofs("ui_test.log");
+		ofs << "[MSG] Start a new log..." << std::endl;
+		ofs.close();
+	}
+
+	void Log(LogType logtype, const char * message, const char * other /*= NULL*/)
+	{
+		std::string line;
+		if(logtype == UTERROR)
+			line = "[ERR]";
+		else
+			line = "[MSG]";
+		std::string msg(message);
+		line = line + " " + msg;
+		if(other)
+		{
+			std::string oth(other);
+			line = line + " " + oth;
+		}
+		std::ofstream ofs;
+		ofs.open("ui_test.log", std::ios::app);
+		ofs << line << std::endl;
+		ofs.close();
 	}
 }
