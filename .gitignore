@@ -4,3 +4,6 @@ x64/
 *.bmp
 *.vcxproj*
 *.log
+lua.c
+lua/
+luac.c

@@ -377,7 +377,7 @@ namespace ui_test
 		ReleaseDC(deskhwnd, deskdc);
 	}
 
-	cv::Rect FindUIRect(char * uiImgName)
+	cv::Rect FindUIRect(const char * uiImgName)
 	{
 		cv::Rect uiRect;
 		cv::Mat templ = cv::imread(uiImgName);

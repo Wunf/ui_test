@@ -2,6 +2,12 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <windows.h>
 #include <iostream>
+extern "C"
+{
+#include "lua/lua.h"
+#include "lua/lualib.h"
+#include "lua/lauxlib.h"
+};
 
 #define MAX_LOADSTRING 100
 #define IDM_EXIT 105
@@ -11,6 +17,7 @@ HINSTANCE tphInst;								// current instance
 HWND tphWnd;                                       // window handler
 TCHAR szTitle[] = "Transparent";					// The title bar text
 TCHAR szWindowClass[] = "Transparent";			// the main window class name
+lua_State * l;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -20,8 +27,10 @@ INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 void Clear(HDC hdc, HWND hWnd);
 void DrawRect(HDC hdc);
 DWORD WINAPI UiTestMainFunc(LPVOID);
-BOOL ClickBtn(char * wndName, char * btnImgName);
-BOOL ExpectUI(char * wndName, char * expUiImg);
+int LRunExe(lua_State * ls);
+int LClickBtn(lua_State * ls);
+int LExpectUI(lua_State * ls);
+int LSleep(lua_State * ls);
 void RePaint();
 
 cv::Rect UIRect;
@@ -174,8 +183,27 @@ void DrawRect(HDC hdc)
 	}
 }
 
-BOOL ClickBtn(char * wndName, char * btnImgName)
+int LRunExe(lua_State * ls)
 {
+	const char * exeName = lua_tostring(ls, 1);
+	UINT res = WinExec(exeName, SW_SHOW);
+	if(res > 31)
+	{
+		lua_pushinteger(l, 1);
+		return 1;
+	}
+	else
+	{
+		lua_pushinteger(l, 0);
+		return 0;
+	}
+}
+
+int LClickBtn(lua_State * ls)
+{
+	const char * wndName = lua_tostring(ls, 1);
+	const char * btnImgName = lua_tostring(ls, 2);
+
 	RePaint();
 
 	// 查找窗口
@@ -183,7 +211,8 @@ BOOL ClickBtn(char * wndName, char * btnImgName)
 	if(!hwnd)
 	{
 		ui_test::Log(ui_test::UTERROR, "Cannot find window:", wndName);
-		return FALSE;
+		lua_pushinteger(l, 0);
+		return 0;
 	}
 
 	// 匹配UI
@@ -198,7 +227,8 @@ BOOL ClickBtn(char * wndName, char * btnImgName)
 	else
 	{
 		ui_test::Log(ui_test::UTERROR, "Cannot match button:", btnImgName);
-		return FALSE;
+		lua_pushinteger(l, 0);
+		return 0;
 	}
 
 	// 移动鼠标
@@ -210,14 +240,18 @@ BOOL ClickBtn(char * wndName, char * btnImgName)
 	RePaint();
 	ui_test::MouseClick();
 
-	return TRUE;
+	lua_pushinteger(l, 1);
+	return 1;
 }
 
-BOOL ExpectUI(char * wndName, char * expUiImg)
+int LExpectUI(lua_State * ls)
 {
+	const char * wndName = lua_tostring(ls, 1);
+	const char * expUiImg = lua_tostring(ls, 2);
+
 	RePaint();
 
-	BOOL flag = FALSE;
+	int flag = 0;
 	int n = 10; // 失败重试次数
 	while(n--)
 	{
@@ -235,7 +269,7 @@ BOOL ExpectUI(char * wndName, char * expUiImg)
 		UIRect = ui_test::FindUIRect(expUiImg);
 		if(UIRect.width)
 		{
-			flag = TRUE;
+			flag = 1;
 			RePaint();
 			ui_test::Log(ui_test::UTMESSAGE, "Ui matched:", expUiImg);
 			Sleep(1000);
@@ -250,7 +284,15 @@ BOOL ExpectUI(char * wndName, char * expUiImg)
 		cv::imwrite("bug_screen.bmp", ui_test::TakeScreenShot());
 	}
 
+	lua_pushinteger(l, flag);
 	return flag;
+}
+
+int LSleep(lua_State * ls)
+{
+	int n = lua_tointeger(ls, 1);
+	Sleep(n);
+	return 1;
 }
 
 void RePaint()
@@ -265,27 +307,37 @@ DWORD WINAPI UiTestMainFunc(LPVOID)
 	// ./ui_test.log
 	ui_test::Init();
 
-	int n = 1;
-	while(n--)
+	l = luaL_newstate();
+	if(l == NULL) 
+		return 1; 
+	int ret = luaL_loadfile(l, "action.lua");
+	if(ret != 0) 
 	{
-		WinExec("D:\\work\\trunk\\program\\misc\\dailybuild\\NGP.exe", SW_SHOW);
-		if(!ExpectUI("网易游戏平台 安装", "templ/expected_newerverfound.bmp"))
-			break;
-		if(!ClickBtn("网易游戏平台 安装", "templ/ok_btn_templ.bmp"))
-			break;
-		if(!ExpectUI("网易游戏平台 安装", "templ/expected_install.bmp"))
-			break;
-		if(!ClickBtn("网易游戏平台 安装", "templ/install_btn_templ.bmp"))
-			break;
-		if(!ExpectUI("网易游戏平台 安装", "templ/expected_installing.bmp"))
-			break;
-		Sleep(8000);
-		if(!ExpectUI("NGP", "templ/expected_ngp.bmp"))
-			break;
-		if(!ClickBtn("NGP", "templ/ngp_close_btn_templ.bmp"))
-			break;
+		const char *msg = lua_tostring(l, -1);
+		Log(ui_test::UTERROR, msg);
+		lua_pop(l, 1);
+		return 1;
 	}
 
+	lua_pushcfunction(l, LRunExe);        
+	lua_setglobal(l, "RunExe");  
+	lua_pushcfunction(l, LClickBtn);        
+	lua_setglobal(l, "ClickBtn");          
+	lua_pushcfunction(l, LExpectUI);        
+	lua_setglobal(l, "ExpectUI"); 
+	lua_pushcfunction(l, LSleep);        
+	lua_setglobal(l, "Sleep");
+
+	ret = lua_pcall(l, 0, 0, 0) ;
+	if(ret != 0) 
+	{
+		const char *msg = lua_tostring(l, -1);
+		Log(ui_test::UTERROR, msg);
+		lua_pop(l, 1);
+		return 1;
+	}
+
+	lua_close(l) ;
 	Log(ui_test::UTMESSAGE, "Finished.");
 	return 1;
 }
