@@ -490,7 +490,15 @@ namespace ui_test
 	void Init()
 	{
 		std::ofstream ofs("ui_test.log");
-		ofs << "[MSG] Start a new log..." << std::endl;
+		ofs << "[MSG] Starting a new log..." << std::endl;
+		ofs << "[MSG] lua usage:" << std::endl;
+		ofs << "[MSG] lua func RunExe(exePath) return 0 if failed" << std::endl;
+		ofs << "[MSG] lua func ClickBtn(wndName, imgName) return 0 if failed" << std::endl;
+		ofs << "[MSG] lua func DoubleClick(wndName, imgName) return 0 if failed" << std::endl;
+		ofs << "[MSG] lua func MouseMove(wndName, imgName) return 0 if failed" << std::endl;
+		ofs << "[MSG] lua func ExpectUI(wndName, imgName) return 0 if failed" << std::endl;
+		ofs << "[MSG] lua func Sleep(milliseconds) return nothing" << std::endl;
+		ofs << "[MSG] lua func SetErrAcceptance(OpenCVMatchErrAcceptance) 0 ~ 5e8 return nothing" << std::endl;
 		ofs.close();
 	}
 

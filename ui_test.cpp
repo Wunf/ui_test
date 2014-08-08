@@ -35,13 +35,13 @@ void RePaint();
 DWORD WINAPI UiTestMainFunc(LPVOID script);
 
 // Script interface
-int LRunExe(lua_State * ls);                // lua func RunExe(exePath)
-int LClickBtn(lua_State * ls);				// lua func ClickBtn(wndName, imgName)
-int LDoubleClick(lua_State * ls);           // lua func DoubleClick(wndName, imgName)
-int LMouseMove(lua_State * ls);				// lua func MouseMove(wndName, imgName)
-int LExpectUI(lua_State * ls);				// lua func ExpectUI(wndName, imgName)
-int LSleep(lua_State * ls);					// lua func Sleep(milliseconds)
-int LSetErrAcceptance(lua_State * ls);		// lua func SetErrAcceptance(OpenCVMatchErrAcceptance) 0 ~ 5e8
+int LRunExe(lua_State * ls);                // lua func RunExe(exePath) return 0 if failed
+int LClickBtn(lua_State * ls);				// lua func ClickBtn(wndName, imgName) return 0 if failed
+int LDoubleClick(lua_State * ls);           // lua func DoubleClick(wndName, imgName) return 0 if failed
+int LMouseMove(lua_State * ls);				// lua func MouseMove(wndName, imgName) return 0 if failed
+int LExpectUI(lua_State * ls);				// lua func ExpectUI(wndName, imgName) return 0 if failed
+int LSleep(lua_State * ls);					// lua func Sleep(milliseconds) return nothing
+int LSetErrAcceptance(lua_State * ls);		// lua func SetErrAcceptance(OpenCVMatchErrAcceptance) 0 ~ 5e8 return nothing
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
@@ -223,12 +223,15 @@ int LClickBtn(lua_State * ls)
 
 	UIRect = ui_test::MatchUI(wndName, btnImgName);
 
+	HWND hwnd = FindWindow(NULL, wndName);
+	SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{		
 		RePaint();
 		Sleep(1000);
 		SetCursorPos(UIRect.x + UIRect.width / 2, UIRect.y + UIRect.height / 2);
 		ui_test::MouseClick();
+		SetCursorPos(0, 0);
 	}
 
 	lua_pushinteger(l, UIRect.width);
@@ -245,7 +248,8 @@ int LDoubleClick(lua_State * ls)
 	RePaint();
 
 	UIRect = ui_test::MatchUI(wndName, btnImgName);
-
+	HWND hwnd = FindWindow(NULL, wndName);
+	SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{		
 		RePaint();
@@ -254,6 +258,7 @@ int LDoubleClick(lua_State * ls)
 		ui_test::MouseClick();
 		Sleep(100);
 		ui_test::MouseClick(); // :) double click
+		SetCursorPos(0, 0);
 	}
 
 	lua_pushinteger(l, UIRect.width);
@@ -271,6 +276,8 @@ int LMouseMove(lua_State * ls)
 
 	UIRect = ui_test::MatchUI(wndName, uiImgName);
 
+	HWND hwnd = FindWindow(NULL, wndName);
+	SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{		
 		RePaint();
@@ -292,6 +299,9 @@ int LExpectUI(lua_State * ls)
 	RePaint();
 
 	UIRect = ui_test::MatchUI(wndName, expUiImg);
+
+	HWND hwnd = FindWindow(NULL, wndName);
+	SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{
 		RePaint();

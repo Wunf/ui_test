@@ -1,7 +1,8 @@
-require "install"
+require "test_install"
+require "test_minimize"
+require "test_config"
 
-SetErrAcceptance(20000000)
---RunExe("C:\\Program Files (x86)\\Netease\\NGP\\out\\Release\\LootHoarder.exe")
+SetErrAcceptance(10000000)
 
 for i = 1, 10 do
 	--local res = TestInstall()
@@ -9,6 +10,7 @@ for i = 1, 10 do
 	--	break;
 	--end
 	--Sleep(8000)
+	--RunExe("C:\\Program Files (x86)\\Netease\\NGP\\out\\Release\\LootHoarder.exe")
 	--local res = ExpectUI("NGP", "templ/ui_ngp.bmp")
 	--if res == 0 then
 	--	break;
@@ -22,27 +24,11 @@ for i = 1, 10 do
 --	if res == 0 then
 --		break;
 --	end
---	local res = ClickBtn("NGP", "templ/btn_minimize.bmp")
+--	rese= TestMinimize()
 --	if res == 0 then
 --		break;
 --	end
---	local res = ClickBtn("NGP", "templ/btn_taskbar_ngp.bmp")
---	if res == 0 then
---		break;
---	end
-	local res = ClickBtn("NGP", "templ/btn_minimize.bmp")
-	if res == 0 then
-		break;
-	end
-	local res = ClickBtn("NGP", "templ/btn_systray.bmp")
-	if res == 0 then
-		break;
-	end
-	local res = DoubleClick("NGP", "templ/btn_systray_ngp.bmp")
-	if res == 0 then
-		break;
-	end
-	local res = ClickBtn("NGP", "templ/btn_systray2.bmp")
+	res = TestConfig()
 	if res == 0 then
 		break;
 	end
