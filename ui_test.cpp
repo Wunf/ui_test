@@ -24,16 +24,24 @@ ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+
+// Paint function
+cv::Rect UIRect;
 void Clear(HDC hdc, HWND hWnd);
 void DrawRect(HDC hdc);
-DWORD WINAPI UiTestMainFunc(LPVOID);
-int LRunExe(lua_State * ls);
-int LClickBtn(lua_State * ls);
-int LExpectUI(lua_State * ls);
-int LSleep(lua_State * ls);
 void RePaint();
 
-cv::Rect UIRect;
+// Run script function
+DWORD WINAPI UiTestMainFunc(LPVOID script);
+
+// Script interface
+int LRunExe(lua_State * ls);                // lua func RunExe(exePath)
+int LClickBtn(lua_State * ls);				// lua func ClickBtn(wndName, imgName)
+int LDoubleClick(lua_State * ls);           // lua func DoubleClick(wndName, imgName)
+int LMouseMove(lua_State * ls);				// lua func MouseMove(wndName, imgName)
+int LExpectUI(lua_State * ls);				// lua func ExpectUI(wndName, imgName)
+int LSleep(lua_State * ls);					// lua func Sleep(milliseconds)
+int LSetErrAcceptance(lua_State * ls);		// lua func SetErrAcceptance(OpenCVMatchErrAcceptance) 0 ~ 5e8
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
@@ -58,8 +66,14 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	hAccelTable = LoadAccelerators(hInstance, NULL);
 
+	// Create a thread to run script
+	if(!lpCmdLine || !(*lpCmdLine))
+	{
+		MessageBox(NULL, "Need a script as parameter.", "Error", MB_OK);
+		PostQuitMessage(0);
+	}
 	DWORD threadId;
-	HANDLE hThread = CreateThread(NULL, 0, UiTestMainFunc, NULL, 0, &threadId );
+	HANDLE hThread = CreateThread(NULL, 0, UiTestMainFunc, LPVOID(lpCmdLine), 0, &threadId );
 
 	// Main message loop:
 	while (GetMessage(&msg, NULL, 0, 0))
@@ -69,6 +83,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 			
+			// Close when script is over
 			DWORD code;
 			GetExitCodeThread(hThread, &code);
 			if(code == 1)
@@ -195,7 +210,7 @@ int LRunExe(lua_State * ls)
 	else
 	{
 		lua_pushinteger(l, 0);
-		return 0;
+		return 1;
 	}
 }
 
@@ -206,41 +221,66 @@ int LClickBtn(lua_State * ls)
 
 	RePaint();
 
-	// 查找窗口
-	HWND hwnd = FindWindow(NULL, wndName);
-	if(!hwnd)
-	{
-		ui_test::Log(ui_test::UTERROR, "Cannot find window:", wndName);
-		lua_pushinteger(l, 0);
-		return 0;
-	}
+	UIRect = ui_test::MatchUI(wndName, btnImgName);
 
-	// 匹配UI
-	SetForegroundWindow(hwnd);
-	UIRect = ui_test::FindUIRect(btnImgName);
 	if(UIRect.width)
-	{
+	{		
 		RePaint();
-		ui_test::Log(ui_test::UTMESSAGE, "Button matched:", btnImgName);
 		Sleep(1000);
-	}
-	else
-	{
-		ui_test::Log(ui_test::UTERROR, "Cannot match button:", btnImgName);
-		lua_pushinteger(l, 0);
-		return 0;
+		SetCursorPos(UIRect.x + UIRect.width / 2, UIRect.y + UIRect.height / 2);
+		ui_test::MouseClick();
 	}
 
-	// 移动鼠标
-	SetForegroundWindow(hwnd);
-	SetCursorPos(UIRect.x + UIRect.width / 2, UIRect.y + UIRect.height / 2);
-
-	//点击
+	lua_pushinteger(l, UIRect.width);
 	UIRect.width = 0;
 	RePaint();
-	ui_test::MouseClick();
+	return 1;
+}
 
-	lua_pushinteger(l, 1);
+int LDoubleClick(lua_State * ls)
+{
+	const char * wndName = lua_tostring(ls, 1);
+	const char * btnImgName = lua_tostring(ls, 2);
+
+	RePaint();
+
+	UIRect = ui_test::MatchUI(wndName, btnImgName);
+
+	if(UIRect.width)
+	{		
+		RePaint();
+		Sleep(1000);
+		SetCursorPos(UIRect.x + UIRect.width / 2, UIRect.y + UIRect.height / 2);
+		ui_test::MouseClick();
+		Sleep(100);
+		ui_test::MouseClick(); // :) double click
+	}
+
+	lua_pushinteger(l, UIRect.width);
+	UIRect.width = 0;
+	RePaint();
+	return 1;
+}
+
+int LMouseMove(lua_State * ls)
+{
+	const char * wndName = lua_tostring(ls, 1);
+	const char * uiImgName = lua_tostring(ls, 2);
+
+	RePaint();
+
+	UIRect = ui_test::MatchUI(wndName, uiImgName);
+
+	if(UIRect.width)
+	{		
+		RePaint();
+		Sleep(1000);
+		SetCursorPos(UIRect.x + UIRect.width / 2, UIRect.y + UIRect.height / 2);
+	}
+
+	lua_pushinteger(l, UIRect.width);
+	UIRect.width = 0;
+	RePaint();
 	return 1;
 }
 
@@ -251,48 +291,31 @@ int LExpectUI(lua_State * ls)
 
 	RePaint();
 
-	int flag = 0;
-	int n = 10; // 失败重试次数
-	while(n--)
+	UIRect = ui_test::MatchUI(wndName, expUiImg);
+	if(UIRect.width)
 	{
-		// 查找窗口
-		HWND hwnd = FindWindow(NULL, wndName);
-		if(!hwnd)
-		{
-			ui_test::Log(ui_test::UTMESSAGE, "Finding window...:", wndName);
-			Sleep(1000);
-			continue;
-		}
-
-		// 匹配UI
-		SetForegroundWindow(hwnd);
-		UIRect = ui_test::FindUIRect(expUiImg);
-		if(UIRect.width)
-		{
-			flag = 1;
-			RePaint();
-			ui_test::Log(ui_test::UTMESSAGE, "Ui matched:", expUiImg);
-			Sleep(1000);
-			break;
-		}
+		RePaint();
+		Sleep(1000);
 	}
 
-	if(!flag)
-	{
-		ui_test::Log(ui_test::UTERROR, "Expected ui doesn't match. Maybe a bug occurred while matching:", expUiImg);
-		ui_test::Log(ui_test::UTERROR, "Saved current screen to bug_screen.bmp.");
-		cv::imwrite("bug_screen.bmp", ui_test::TakeScreenShot());
-	}
-
-	lua_pushinteger(l, flag);
-	return flag;
+	lua_pushinteger(l, UIRect.width);
+	UIRect.width = 0;
+	RePaint();
+	return 1;
 }
 
 int LSleep(lua_State * ls)
 {
-	int n = lua_tointeger(ls, 1);
+	int n = static_cast<int>(lua_tointeger(ls, 1));
 	Sleep(n);
-	return 1;
+	return 0;
+}
+
+int LSetErrAcceptance(lua_State * ls)
+{
+	float n = static_cast<float>(lua_tonumber(ls, 1));
+	ui_test::SetErrAcceptance(n);
+	return 0;
 }
 
 void RePaint()
@@ -302,15 +325,16 @@ void RePaint()
 	UpdateWindow(tphWnd);
 }
 
-DWORD WINAPI UiTestMainFunc(LPVOID)
+DWORD WINAPI UiTestMainFunc(LPVOID script)
 {
 	// ./ui_test.log
 	ui_test::Init();
 
 	l = luaL_newstate();
+	luaL_openlibs(l);
 	if(l == NULL) 
 		return 1; 
-	int ret = luaL_loadfile(l, "action.lua");
+	int ret = luaL_loadfile(l, LPTSTR(script));
 	if(ret != 0) 
 	{
 		const char *msg = lua_tostring(l, -1);
@@ -322,11 +346,17 @@ DWORD WINAPI UiTestMainFunc(LPVOID)
 	lua_pushcfunction(l, LRunExe);        
 	lua_setglobal(l, "RunExe");  
 	lua_pushcfunction(l, LClickBtn);        
-	lua_setglobal(l, "ClickBtn");          
+	lua_setglobal(l, "ClickBtn");  
+	lua_pushcfunction(l, LDoubleClick);        
+	lua_setglobal(l, "DoubleClick");  
+	lua_pushcfunction(l, LMouseMove);        
+	lua_setglobal(l, "MouseMove");
 	lua_pushcfunction(l, LExpectUI);        
 	lua_setglobal(l, "ExpectUI"); 
 	lua_pushcfunction(l, LSleep);        
 	lua_setglobal(l, "Sleep");
+	lua_pushcfunction(l, LSetErrAcceptance);        
+	lua_setglobal(l, "SetErrAcceptance");
 
 	ret = lua_pcall(l, 0, 0, 0) ;
 	if(ret != 0) 

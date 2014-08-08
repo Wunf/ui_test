@@ -1,43 +1,57 @@
-for i = 1, 2 do
-	local res = RunExe("D:\\work\\trunk\\program\\misc\\dailybuild\\NGP.exe")
-	print(res)
+require "install"
+
+SetErrAcceptance(20000000)
+--RunExe("C:\\Program Files (x86)\\Netease\\NGP\\out\\Release\\LootHoarder.exe")
+
+for i = 1, 10 do
+	--local res = TestInstall()
+	--if res == 0 then
+	--	break;
+	--end
+	--Sleep(8000)
+	--local res = ExpectUI("NGP", "templ/ui_ngp.bmp")
+	--if res == 0 then
+	--	break;
+--	end
+--	local res = ClickBtn("NGP", "templ/btn_offline.bmp")
+--	if res == 0 then
+--		break;
+--	end
+--	Sleep(5000)
+--	local res = ExpectUI("NGP", "templ/ui_junlin.bmp")
+--	if res == 0 then
+--		break;
+--	end
+--	local res = ClickBtn("NGP", "templ/btn_minimize.bmp")
+--	if res == 0 then
+--		break;
+--	end
+--	local res = ClickBtn("NGP", "templ/btn_taskbar_ngp.bmp")
+--	if res == 0 then
+--		break;
+--	end
+	local res = ClickBtn("NGP", "templ/btn_minimize.bmp")
 	if res == 0 then
 		break;
 	end
-	local res = ExpectUI("网易游戏平台 安装", "templ/expected_newerverfound.bmp")
-	print(res)
+	local res = ClickBtn("NGP", "templ/btn_systray.bmp")
 	if res == 0 then
 		break;
 	end
-	local res = ClickBtn("网易游戏平台 安装", "templ/ok_btn_templ.bmp")
-	print(res)
+	local res = DoubleClick("NGP", "templ/btn_systray_ngp.bmp")
 	if res == 0 then
 		break;
 	end
-	local res = ExpectUI("网易游戏平台 安装", "templ/expected_install.bmp")
-	print(res)
+	local res = ClickBtn("NGP", "templ/btn_systray2.bmp")
 	if res == 0 then
 		break;
 	end
-	local res = ClickBtn("网易游戏平台 安装", "install_btn_templ.bmp")
-	print(res)
-	if res == 0 then
-		break;
-	end
-	local res = ExpectUI("网易游戏平台 安装", "templ/expected_installing.bmp")
-	print(res)
-	if res == 0 then
-		break;
-	end
-	Sleep(8000);
-	local res = ExpectUI("NGP", "templ/expected_ngp.bmp")
-	print(res)
-	if res == 0 then
-		break;
-	end
-	local res = ClickBtn("NGP", "templ/ngp_close_btn_templ.bmp")
-	print(res)
-	if res == 0 then
-		break;
-	end
+--	local res = MouseMove("NGP", "templ/ui_junlin.bmp")
+--	if res == 0 then
+--		break;
+--	end
+--	local res = ExpectUI("NGP", "templ/ui_sidebar.bmp")
+--	if res == 0 then
+--		break;
+--	end
 end

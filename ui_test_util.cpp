@@ -10,7 +10,7 @@ namespace ui_test
 {
 	bool displaymatch = false;
 	bool uiblink = false;
-	const float errAcceptance = 20000000.f;
+	float errAcceptance = 30000000.f;
 
 	BOOL FindChildByInfo(
 		IAccessible* paccParent,
@@ -243,6 +243,11 @@ namespace ui_test
 		uiblink = false;
 	}
 
+	void SetErrAcceptance( float errApt )
+	{
+		errAcceptance = errApt;
+	}
+
 	cv::Mat TakeScreenShot()
 	{
 		HDC hwindowDC, hwindowCompatibleDC;
@@ -385,7 +390,7 @@ namespace ui_test
 
 		if(templ.data == NULL)
 		{
-			Log(UTERROR, "Load ui templ error.", uiImgName);
+			Log(UTERROR, "Load ui templ error:", uiImgName);
 			return uiRect;
 		}
 		cv::Mat result;
@@ -402,10 +407,7 @@ namespace ui_test
 		cv::Point minLoc, maxLoc;
 		cv::minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc);
 		if(minVal >= errAcceptance)
-		{
-			Log(UTMESSAGE, "Tried to match ui failed, retrying...");
 			return uiRect;
-		}
 		uiRect = cv::Rect(minLoc.x, minLoc.y, templ.cols, templ.rows);	
 
 		if(displaymatch)
@@ -415,6 +417,44 @@ namespace ui_test
 		}
 
 		return uiRect;
+	}
+
+	cv::Rect MatchUI(const char * wndName, const char * uiImgName)
+	{
+		cv::Rect UIRect;
+		int n = 10; // 失败重试次数
+		while(n--)
+		{
+			// 查找窗口
+			HWND hwnd = FindWindow(NULL, wndName);
+			if(!hwnd)
+			{
+				Log(UTMESSAGE, "Finding window...:", wndName);
+				Sleep(1000);
+				continue;
+			}
+
+			// 匹配UI
+			SetForegroundWindow(hwnd);
+			Sleep(200);
+			UIRect = FindUIRect(uiImgName);
+			if(UIRect.width)
+			{
+				Log(UTMESSAGE, "Ui matched:", uiImgName);
+				break;
+			}
+			else
+				Log(UTMESSAGE, "Tried to match ui failed, retrying...:", uiImgName);
+		}
+
+		if(!UIRect.width)
+		{
+			Log(UTERROR, "Expected ui doesn't match. Maybe a bug occurred while matching:", uiImgName);
+			Log(UTERROR, "Saved current screen to bug_screen.bmp.");
+			cv::imwrite("bug_screen.bmp", TakeScreenShot());
+		}
+
+		return UIRect;
 	}
 
 	void MouseClick()
@@ -445,71 +485,6 @@ namespace ui_test
 		Input.ki.dwFlags = KEYEVENTF_KEYUP;
 		SendInput(1, &Input, sizeof(INPUT));
 		//Sleep(100);
-	}
-
-	void DrawRectangleOnTransparent(HWND hWnd, const RECT& rc)
-	{
-		HDC hDC = GetDC(hWnd);
-		if (hDC)
-		{
-			RECT rcClient;
-			GetClientRect(hWnd, &rcClient);
-
-			BITMAPINFO bmi = { 0 };
-			bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
-			bmi.bmiHeader.biBitCount = 8;
-			bmi.bmiHeader.biCompression = BI_RGB;
-			bmi.bmiHeader.biWidth = rcClient.right;
-			bmi.bmiHeader.biHeight = rcClient.bottom;
-
-			LPVOID pBits;
-			HBITMAP hBmpSource = CreateDIBSection(hDC, &bmi, DIB_RGB_COLORS, &pBits, 0, 0);
-			DWORD a = GetLastError();
-			if (hBmpSource)
-			{
-				HDC hDCSource = CreateCompatibleDC(hDC);
-				if (hDCSource)
-				{
-					// fill the background in red
-					HGDIOBJ hOldBmp = SelectObject(hDCSource, hBmpSource);
-					HBRUSH hBsh = CreateSolidBrush(RGB(0,0,255));
-					FillRect(hDCSource, &rcClient, hBsh);
-					DeleteObject(hBsh);
-
-					// draw the rectangle in black
-					HGDIOBJ hOldBsh = SelectObject(hDCSource, GetStockObject(NULL_BRUSH));
-					HGDIOBJ hOldPen = SelectObject(hDCSource, CreatePen(PS_SOLID, 2, RGB(0,0,0)));
-					Rectangle(hDCSource, rc.left, rc.top, rc.right, rc.bottom);
-					DeleteObject(SelectObject(hDCSource, hOldPen));
-					SelectObject(hDCSource, hOldBsh);
-
-					GdiFlush();
-
-					// fix up the alpha channel
-					DWORD* pPixel = reinterpret_cast<DWORD*>(pBits);
-					for (int y = 0; y < rcClient.bottom; y++)
-					{
-						for (int x = 0; x < rcClient.right; x++, pPixel++)
-						{
-							if ((*pPixel & 0x00ff0000) == 0x00ff0000)
-								*pPixel |= 0x01000000; // transparent
-							else
-								*pPixel |= 0xff000000; // solid
-						}
-					}
-
-					// Update the layered window
-					POINT pt = { 0 };
-					BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
-					UpdateLayeredWindow(hWnd, hDC, NULL, NULL, hDCSource, &pt, 0, &bf, ULW_ALPHA);
-
-					SelectObject(hDCSource, hOldBmp);
-					DeleteDC(hDCSource);
-				}
-				DeleteObject(hBmpSource);
-			}
-			ReleaseDC(hWnd, hDC);
-		}
 	}
 
 	void Init()

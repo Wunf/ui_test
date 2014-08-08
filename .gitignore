@@ -7,3 +7,4 @@ x64/
 lua.c
 lua/
 luac.c
+*.swp
