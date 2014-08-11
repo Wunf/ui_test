@@ -7,6 +7,10 @@ function TestConfig()
 	if res == 0 then
 		return 0
 	end
+--[[	local res = ClickBtn("NGP", "templ/btn_effectlow.bmp")
+	if res == 0 then
+		return 0
+	end]]
 	local res = ClickBtn("NGP", "templ/btn_improvecpu.bmp")
 	if res == 0 then
 		return 0

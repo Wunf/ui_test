@@ -2,9 +2,9 @@ require "test_install"
 require "test_minimize"
 require "test_config"
 
-SetErrAcceptance(10000000)
+SetErrAcceptance(2000000)
 
-for i = 1, 10 do
+for i = 1, 1 do
 	--local res = TestInstall()
 	--if res == 0 then
 	--	break;

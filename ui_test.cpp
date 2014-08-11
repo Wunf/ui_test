@@ -27,8 +27,10 @@ INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 // Paint function
 cv::Rect UIRect;
+RECT circle;
 void Clear(HDC hdc, HWND hWnd);
 void DrawRect(HDC hdc);
+void DrawCircle(HDC hdc);
 void RePaint();
 
 // Run script function
@@ -164,6 +166,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		hdc = BeginPaint(hWnd, &ps);
 		Clear(hdc, hWnd);
 		DrawRect(hdc);
+		DrawCircle(hdc);
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_DESTROY:
@@ -198,6 +201,20 @@ void DrawRect(HDC hdc)
 	}
 }
 
+void DrawCircle(HDC hdc)
+{
+	if((circle.right - circle.left) != 0)
+	{
+		HBRUSH hBrush = CreateSolidBrush(RGB(255,0,255));
+		HPEN hpen = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
+		SelectObject(hdc, hBrush);
+		SelectObject(hdc, hpen);
+		Ellipse(hdc, circle.left, circle.top, circle.right, circle.bottom);
+		DeleteObject(hBrush);
+		DeleteObject(hpen);
+	}
+}
+
 int LRunExe(lua_State * ls)
 {
 	const char * exeName = lua_tostring(ls, 1);
@@ -227,14 +244,24 @@ int LClickBtn(lua_State * ls)
 	SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{		
+		lua_pushinteger(l, UIRect.width);
 		RePaint();
 		Sleep(1000);
-		SetCursorPos(UIRect.x + UIRect.width / 2, UIRect.y + UIRect.height / 2);
+		int mouse_x = UIRect.x + UIRect.width / 2, mouse_y = UIRect.y + UIRect.height / 2;
+		SetCursorPos(mouse_x, mouse_y);
+		circle.left = mouse_x - 10;
+		circle.right = mouse_x + 10;
+		circle.top = mouse_y - 10;
+		circle.bottom = mouse_y + 10;
+		UIRect.width = 0;
 		ui_test::MouseClick();
+		RePaint();
+		Sleep(1000);
+		circle.right = circle.left;
 		SetCursorPos(0, 0);
 	}
-
-	lua_pushinteger(l, UIRect.width);
+	else
+		lua_pushinteger(l, 0);
 	UIRect.width = 0;
 	RePaint();
 	return 1;
@@ -252,16 +279,27 @@ int LDoubleClick(lua_State * ls)
 	SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{		
+		lua_pushinteger(l, UIRect.width);
 		RePaint();
 		Sleep(1000);
-		SetCursorPos(UIRect.x + UIRect.width / 2, UIRect.y + UIRect.height / 2);
+		int mouse_x = UIRect.x + UIRect.width / 2, mouse_y = UIRect.y + UIRect.height / 2;
+		SetCursorPos(mouse_x, mouse_y);
+		circle.left = mouse_x - 10;
+		circle.right = mouse_x + 10;
+		circle.top = mouse_y - 10;
+		circle.bottom = mouse_y + 10;
+		UIRect.width = 0;
 		ui_test::MouseClick();
 		Sleep(100);
 		ui_test::MouseClick(); // :) double click
+		RePaint();
+		Sleep(1000);
+		circle.right = circle.left;
 		SetCursorPos(0, 0);
 	}
+	else
+		lua_pushinteger(l, 0);
 
-	lua_pushinteger(l, UIRect.width);
 	UIRect.width = 0;
 	RePaint();
 	return 1;
