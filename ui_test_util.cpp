@@ -435,8 +435,8 @@ namespace ui_test
 			}
 
 			// ∆•≈‰UI
-			SetForegroundWindow(hwnd);
-			Sleep(200);
+			//SetForegroundWindow(hwnd);
+			//Sleep(200);
 			UIRect = FindUIRect(uiImgName);
 			if(UIRect.width)
 			{
@@ -444,7 +444,10 @@ namespace ui_test
 				break;
 			}
 			else
+			{
 				Log(UTMESSAGE, "Tried to match ui failed, retrying...:", uiImgName);
+				Sleep(1000);
+			}
 		}
 
 		if(!UIRect.width)
