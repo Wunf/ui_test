@@ -257,6 +257,7 @@ int LClickBtn(lua_State * ls)
 		circle.bottom = mouse_y + 20;
 		UIRect.width = 0;
 		//SetForegroundWindow(hwnd);	
+		Sleep(100);
 		ui_test::MouseClick();
 		RePaint();
 		Sleep(1000);
@@ -291,6 +292,7 @@ int LDoubleClick(lua_State * ls)
 		circle.top = mouse_y - 20;
 		circle.bottom = mouse_y + 20;
 		UIRect.width = 0;
+		Sleep(100);
 		//SetForegroundWindow(hwnd);
 		ui_test::MouseClick();
 		Sleep(100);
