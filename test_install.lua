@@ -19,4 +19,5 @@ function TestInstall()
 	if res == 0 then
 		return 0
 	end
+	return 1
 end

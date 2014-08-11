@@ -41,6 +41,7 @@ int LRunExe(lua_State * ls);                // lua func RunExe(exePath) return 0
 int LClickBtn(lua_State * ls);				// lua func ClickBtn(wndName, imgName) return 0 if failed
 int LDoubleClick(lua_State * ls);           // lua func DoubleClick(wndName, imgName) return 0 if failed
 int LMouseMove(lua_State * ls);				// lua func MouseMove(wndName, imgName) return 0 if failed
+int LPressKey(lua_State * ls);				// lua func PressKey(virtualKey) return 0 if failed
 int LExpectUI(lua_State * ls);				// lua func ExpectUI(wndName, imgName) return 0 if failed
 int LSleep(lua_State * ls);					// lua func Sleep(milliseconds) return nothing
 int LSetErrAcceptance(lua_State * ls);		// lua func SetErrAcceptance(OpenCVMatchErrAcceptance) 0 ~ 5e8 return nothing
@@ -71,7 +72,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	// Create a thread to run script
 	if(!lpCmdLine || !(*lpCmdLine))
 	{
-		MessageBox(NULL, "Need a script as parameter.", "Error", MB_OK);
+		MessageBox(NULL, "Need a lua script as parameter.", "Error", MB_OK);
 		PostQuitMessage(0);
 	}
 	DWORD threadId;
@@ -125,6 +126,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), NULL, NULL, hInstance, NULL);
 
 	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TOPMOST | WS_EX_LAYERED);
+	SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
 	BOOL bres = SetLayeredWindowAttributes(hWnd, RGB(255, 0, 255), 0, LWA_COLORKEY);
 	if(!bres)
 		return FALSE;
@@ -241,7 +244,6 @@ int LClickBtn(lua_State * ls)
 	UIRect = ui_test::MatchUI(wndName, btnImgName);
 
 	HWND hwnd = FindWindow(NULL, wndName);
-	SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{		
 		lua_pushinteger(l, UIRect.width);
@@ -249,16 +251,16 @@ int LClickBtn(lua_State * ls)
 		Sleep(1000);
 		int mouse_x = UIRect.x + UIRect.width / 2, mouse_y = UIRect.y + UIRect.height / 2;
 		SetCursorPos(mouse_x, mouse_y);
-		circle.left = mouse_x - 10;
-		circle.right = mouse_x + 10;
-		circle.top = mouse_y - 10;
-		circle.bottom = mouse_y + 10;
+		circle.left = mouse_x - 20;
+		circle.right = mouse_x + 20;
+		circle.top = mouse_y - 20;
+		circle.bottom = mouse_y + 20;
 		UIRect.width = 0;
+		//SetForegroundWindow(hwnd);	
 		ui_test::MouseClick();
 		RePaint();
 		Sleep(1000);
 		circle.right = circle.left;
-		SetCursorPos(0, 0);
 	}
 	else
 		lua_pushinteger(l, 0);
@@ -276,26 +278,26 @@ int LDoubleClick(lua_State * ls)
 
 	UIRect = ui_test::MatchUI(wndName, btnImgName);
 	HWND hwnd = FindWindow(NULL, wndName);
-	SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{		
 		lua_pushinteger(l, UIRect.width);
 		RePaint();
 		Sleep(1000);
+		
 		int mouse_x = UIRect.x + UIRect.width / 2, mouse_y = UIRect.y + UIRect.height / 2;
 		SetCursorPos(mouse_x, mouse_y);
-		circle.left = mouse_x - 10;
-		circle.right = mouse_x + 10;
-		circle.top = mouse_y - 10;
-		circle.bottom = mouse_y + 10;
+		circle.left = mouse_x - 20;
+		circle.right = mouse_x + 20;
+		circle.top = mouse_y - 20;
+		circle.bottom = mouse_y + 20;
 		UIRect.width = 0;
+		//SetForegroundWindow(hwnd);
 		ui_test::MouseClick();
 		Sleep(100);
 		ui_test::MouseClick(); // :) double click
 		RePaint();
 		Sleep(1000);
 		circle.right = circle.left;
-		SetCursorPos(0, 0);
 	}
 	else
 		lua_pushinteger(l, 0);
@@ -315,7 +317,7 @@ int LMouseMove(lua_State * ls)
 	UIRect = ui_test::MatchUI(wndName, uiImgName);
 
 	HWND hwnd = FindWindow(NULL, wndName);
-	SetForegroundWindow(hwnd);
+	//SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{		
 		RePaint();
@@ -329,6 +331,16 @@ int LMouseMove(lua_State * ls)
 	return 1;
 }
 
+int LPressKey(lua_State * ls)
+{
+	const char * wndName = lua_tostring(ls, 1);
+	WORD virtualKey = lua_tointeger(ls, 2);
+	HWND hwnd = FindWindow(NULL, wndName);
+	//SetForegroundWindow(hwnd);
+	ui_test::PressKey(virtualKey);
+	return 0;
+}
+
 int LExpectUI(lua_State * ls)
 {
 	const char * wndName = lua_tostring(ls, 1);
@@ -339,7 +351,7 @@ int LExpectUI(lua_State * ls)
 	UIRect = ui_test::MatchUI(wndName, expUiImg);
 
 	HWND hwnd = FindWindow(NULL, wndName);
-	SetForegroundWindow(hwnd);
+	//SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{
 		RePaint();
@@ -368,7 +380,7 @@ int LSetErrAcceptance(lua_State * ls)
 
 void RePaint()
 {
-	SetForegroundWindow(tphWnd);
+	//SetForegroundWindow(tphWnd);
 	InvalidateRect(tphWnd, NULL, TRUE);
 	UpdateWindow(tphWnd);
 }
@@ -399,6 +411,8 @@ DWORD WINAPI UiTestMainFunc(LPVOID script)
 	lua_setglobal(l, "DoubleClick");  
 	lua_pushcfunction(l, LMouseMove);        
 	lua_setglobal(l, "MouseMove");
+	lua_pushcfunction(l, LPressKey);        
+	lua_setglobal(l, "PressKey");
 	lua_pushcfunction(l, LExpectUI);        
 	lua_setglobal(l, "ExpectUI"); 
 	lua_pushcfunction(l, LSleep);        
