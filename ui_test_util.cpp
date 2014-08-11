@@ -449,9 +449,9 @@ namespace ui_test
 
 		if(!UIRect.width)
 		{
-			Log(UTERROR, "Expected ui doesn't match. Maybe a bug occurred while matching:", uiImgName);
-			Log(UTERROR, "Saved current screen to bug_screen.bmp.");
-			cv::imwrite("bug_screen.bmp", TakeScreenShot());
+			Log(UTMESSAGE, "Expected ui doesn't match while matching img:", uiImgName);
+			Log(UTMESSAGE, "Saved current screen to screenshot.bmp.");
+			cv::imwrite("screenshot.bmp", TakeScreenShot());
 		}
 
 		return UIRect;
