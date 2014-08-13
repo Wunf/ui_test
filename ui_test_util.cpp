@@ -419,21 +419,12 @@ namespace ui_test
 		return uiRect;
 	}
 
-	cv::Rect MatchUI(const char * wndName, const char * uiImgName)
+	cv::Rect MatchUI(const char * uiImgName)
 	{
 		cv::Rect UIRect;
 		int n = 10; // 失败重试次数
 		while(n--)
 		{
-			// 查找窗口
-			HWND hwnd = FindWindow(NULL, wndName);
-			if(!hwnd)
-			{
-				Log(UTMESSAGE, "Finding window...:", wndName);
-				Sleep(1000);
-				continue;
-			}
-
 			// 匹配UI
 			//SetForegroundWindow(hwnd);
 			//Sleep(200);
@@ -496,11 +487,11 @@ namespace ui_test
 		ofs << "[MSG] Starting a new log..." << std::endl;
 		ofs << "[MSG] lua usage:" << std::endl;
 		ofs << "[MSG] lua func RunExe(exePath) return 0 if failed" << std::endl;
-		ofs << "[MSG] lua func ClickBtn(wndName, imgName) return 0 if failed" << std::endl;
-		ofs << "[MSG] lua func DoubleClick(wndName, imgName) return 0 if failed" << std::endl;
-		ofs << "[MSG] lua func MouseMove(wndName, imgName) return 0 if failed" << std::endl;
+		ofs << "[MSG] lua func ClickBtn(imgName, expectUI) return 0 if failed" << std::endl;
+		ofs << "[MSG] lua func DoubleClick(imgName, expectUI) return 0 if failed" << std::endl;
+		ofs << "[MSG] lua func MouseMove(imgName) return 0 if failed" << std::endl;
 		ofs << "[MSG] lua func PressKey(virtualKey) return 0 if failed" << std::endl;
-		ofs << "[MSG] lua func ExpectUI(wndName, imgName) return 0 if failed" << std::endl;
+		ofs << "[MSG] lua func ExpectUI(imgName) return 0 if failed" << std::endl;
 		ofs << "[MSG] lua func Sleep(milliseconds) return nothing" << std::endl;
 		ofs << "[MSG] lua func SetErrAcceptance(OpenCVMatchErrAcceptance) 0 ~ 5e8 return nothing" << std::endl;
 		ofs.close();

@@ -41,7 +41,7 @@ namespace ui_test
 	void DisPlayImg(cv::Mat img);
 	void BlinkUI(int times); // 根据当前鼠标位置选择UI
 	cv::Rect FindUIRect(const char * uiImgName);
-	cv::Rect MatchUI(const char * wndName, const char * uiImgName);
+	cv::Rect MatchUI(const char * uiImgName);
 	void PressKey(WORD vk);
 	void MouseClick();
 	void Init();

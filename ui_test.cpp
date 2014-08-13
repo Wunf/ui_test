@@ -38,11 +38,11 @@ DWORD WINAPI UiTestMainFunc(LPVOID script);
 
 // Script interface
 int LRunExe(lua_State * ls);                // lua func RunExe(exePath) return 0 if failed
-int LClickBtn(lua_State * ls);				// lua func ClickBtn(wndName, imgName) return 0 if failed
-int LDoubleClick(lua_State * ls);           // lua func DoubleClick(wndName, imgName) return 0 if failed
-int LMouseMove(lua_State * ls);				// lua func MouseMove(wndName, imgName) return 0 if failed
+int LClickBtn(lua_State * ls);				// lua func ClickBtn(imgName, expectUI) return 0 if failed
+int LDoubleClick(lua_State * ls);           // lua func DoubleClick(imgName, expectUI) return 0 if failed
+int LMouseMove(lua_State * ls);				// lua func MouseMove(imgName) return 0 if failed
 int LPressKey(lua_State * ls);				// lua func PressKey(virtualKey) return 0 if failed
-int LExpectUI(lua_State * ls);				// lua func ExpectUI(wndName, imgName) return 0 if failed
+int LExpectUI(lua_State * ls);				// lua func ExpectUI(imgName) return 0 if failed
 int LSleep(lua_State * ls);					// lua func Sleep(milliseconds) return nothing
 int LSetErrAcceptance(lua_State * ls);		// lua func SetErrAcceptance(OpenCVMatchErrAcceptance) 0 ~ 5e8 return nothing
 
@@ -236,35 +236,47 @@ int LRunExe(lua_State * ls)
 
 int LClickBtn(lua_State * ls)
 {
-	const char * wndName = lua_tostring(ls, 1);
-	const char * btnImgName = lua_tostring(ls, 2);
+	const char * btnImgName = lua_tostring(ls, 1);
+	const char * expectedUI = lua_tostring(ls, 2);
 
 	RePaint();
 
-	UIRect = ui_test::MatchUI(wndName, btnImgName);
-
-	HWND hwnd = FindWindow(NULL, wndName);
+	UIRect = ui_test::MatchUI(btnImgName);
 	if(UIRect.width)
-	{		
-		lua_pushinteger(l, UIRect.width);
+	{	
 		RePaint();
 		Sleep(1000);
 		int mouse_x = UIRect.x + UIRect.width / 2, mouse_y = UIRect.y + UIRect.height / 2;
-		SetCursorPos(mouse_x, mouse_y);
-		circle.left = mouse_x - 20;
-		circle.right = mouse_x + 20;
-		circle.top = mouse_y - 20;
-		circle.bottom = mouse_y + 20;
-		UIRect.width = 0;
-		//SetForegroundWindow(hwnd);	
-		Sleep(100);
-		ui_test::MouseClick();
-		RePaint();
-		Sleep(1000);
-		circle.right = circle.left;
+		int n = 5;
+		while(n--)
+		{	
+			SetCursorPos(mouse_x, mouse_y);
+			UIRect.width = 0;
+			ui_test::MouseClick();
+			circle.left = mouse_x - 20;
+			circle.right = mouse_x + 20;
+			circle.top = mouse_y - 20;
+			circle.bottom = mouse_y + 20;
+			RePaint();
+			Sleep(1000);
+			circle.left = circle.right;
+			RePaint();
+			SetCursorPos(0, 0);
+			UIRect = ui_test::MatchUI(expectedUI);
+			if(UIRect.width)
+				break;
+			else
+				ui_test::Log(ui_test::UTMESSAGE, "Clicking maybe failed, retrying...");
+		}
+		if(n)
+			lua_pushinteger(l, 1);	
+		else
+			lua_pushinteger(l, 0);	
+		
 	}
 	else
 		lua_pushinteger(l, 0);
+	circle.right = circle.left;
 	UIRect.width = 0;
 	RePaint();
 	return 1;
@@ -272,38 +284,49 @@ int LClickBtn(lua_State * ls)
 
 int LDoubleClick(lua_State * ls)
 {
-	const char * wndName = lua_tostring(ls, 1);
-	const char * btnImgName = lua_tostring(ls, 2);
+	const char * btnImgName = lua_tostring(ls, 1);
+	const char * expectedUI = lua_tostring(ls, 2);
 
 	RePaint();
 
-	UIRect = ui_test::MatchUI(wndName, btnImgName);
-	HWND hwnd = FindWindow(NULL, wndName);
+	UIRect = ui_test::MatchUI(btnImgName);
 	if(UIRect.width)
-	{		
-		lua_pushinteger(l, UIRect.width);
+	{	
 		RePaint();
 		Sleep(1000);
-		
 		int mouse_x = UIRect.x + UIRect.width / 2, mouse_y = UIRect.y + UIRect.height / 2;
-		SetCursorPos(mouse_x, mouse_y);
-		circle.left = mouse_x - 20;
-		circle.right = mouse_x + 20;
-		circle.top = mouse_y - 20;
-		circle.bottom = mouse_y + 20;
-		UIRect.width = 0;
-		Sleep(100);
-		//SetForegroundWindow(hwnd);
-		ui_test::MouseClick();
-		Sleep(100);
-		ui_test::MouseClick(); // :) double click
-		RePaint();
-		Sleep(1000);
-		circle.right = circle.left;
+		int n = 5;
+		while(n--)
+		{	
+			SetCursorPos(mouse_x, mouse_y);
+			UIRect.width = 0;
+			ui_test::MouseClick();
+			Sleep(100);
+			ui_test::MouseClick(); // :) double click
+			circle.left = mouse_x - 20;
+			circle.right = mouse_x + 20;
+			circle.top = mouse_y - 20;
+			circle.bottom = mouse_y + 20;
+			RePaint();
+			Sleep(1000);
+			circle.left = circle.right;
+			RePaint();
+			SetCursorPos(0, 0);
+			UIRect = ui_test::MatchUI(expectedUI);
+			if(UIRect.width)
+				break;
+			else
+				ui_test::Log(ui_test::UTMESSAGE, "Clicking maybe failed, retrying...");
+		}
+		if(n)
+			lua_pushinteger(l, 1);	
+		else
+			lua_pushinteger(l, 0);	
+
 	}
 	else
 		lua_pushinteger(l, 0);
-
+	circle.right = circle.left;
 	UIRect.width = 0;
 	RePaint();
 	return 1;
@@ -311,15 +334,12 @@ int LDoubleClick(lua_State * ls)
 
 int LMouseMove(lua_State * ls)
 {
-	const char * wndName = lua_tostring(ls, 1);
-	const char * uiImgName = lua_tostring(ls, 2);
+	const char * uiImgName = lua_tostring(ls, 1);
 
 	RePaint();
 
-	UIRect = ui_test::MatchUI(wndName, uiImgName);
+	UIRect = ui_test::MatchUI(uiImgName);
 
-	HWND hwnd = FindWindow(NULL, wndName);
-	//SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{		
 		RePaint();
@@ -335,25 +355,19 @@ int LMouseMove(lua_State * ls)
 
 int LPressKey(lua_State * ls)
 {
-	const char * wndName = lua_tostring(ls, 1);
-	WORD virtualKey = lua_tointeger(ls, 2);
-	HWND hwnd = FindWindow(NULL, wndName);
-	//SetForegroundWindow(hwnd);
+	WORD virtualKey = lua_tointeger(ls, 1);
 	ui_test::PressKey(virtualKey);
 	return 0;
 }
 
 int LExpectUI(lua_State * ls)
 {
-	const char * wndName = lua_tostring(ls, 1);
 	const char * expUiImg = lua_tostring(ls, 2);
 
 	RePaint();
 
-	UIRect = ui_test::MatchUI(wndName, expUiImg);
+	UIRect = ui_test::MatchUI(expUiImg);
 
-	HWND hwnd = FindWindow(NULL, wndName);
-	//SetForegroundWindow(hwnd);
 	if(UIRect.width)
 	{
 		RePaint();
