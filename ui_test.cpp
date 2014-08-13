@@ -261,7 +261,6 @@ int LClickBtn(lua_State * ls)
 			Sleep(1000);
 			circle.left = circle.right;
 			RePaint();
-			SetCursorPos(0, 0);
 			UIRect = ui_test::MatchUI(expectedUI);
 			if(UIRect.width)
 				break;
@@ -311,7 +310,6 @@ int LDoubleClick(lua_State * ls)
 			Sleep(1000);
 			circle.left = circle.right;
 			RePaint();
-			SetCursorPos(0, 0);
 			UIRect = ui_test::MatchUI(expectedUI);
 			if(UIRect.width)
 				break;
