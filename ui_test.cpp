@@ -15,8 +15,8 @@ extern "C"
 // Global Variables:
 HINSTANCE tphInst;								// current instance
 HWND tphWnd;                                       // window handler
-TCHAR szTitle[] = "Transparent";					// The title bar text
-TCHAR szWindowClass[] = "Transparent";			// the main window class name
+TCHAR szTitle[] = "GUI_TEST";					// The title bar text
+TCHAR szWindowClass[] = "GUI_TEST";			// the main window class name
 lua_State * l;
 
 // Forward declarations of functions included in this code module:
