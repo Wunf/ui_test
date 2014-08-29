@@ -29,7 +29,7 @@ namespace ui_test
 	void SetUiBlink();
 	void SetNotUiBlink();
 
-	void SetErrAcceptance(float errApt);
+	void SetErrAcceptance(double errApt);
 
 	cv::Mat TakeScreenShot();
 	cv::Mat HWnd2Mat(HWND hwnd);
@@ -37,7 +37,9 @@ namespace ui_test
 	void BlinkUI(int times); // 根据当前鼠标位置选择UI
 	cv::Rect FindUIRect(const char * uiImgName);
 	cv::Rect MatchUI(HWND hWnd, const char * uiImgName);
-	void PressKey(WORD vk);
+	int AvoidUI(const char * uiImgName);
+	void KeyDown(WORD vk);
+	void KeyUp(WORD vk);
 	void MouseClick();
 	void Init();
 	enum LogType{UTERROR, UTMESSAGE};

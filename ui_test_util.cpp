@@ -5,7 +5,7 @@ namespace ui_test
 {
 	bool displaymatch = false;
 	bool uiblink = false;
-	float errAcceptance = 30000000.f;
+	double errAcceptance = 30000000.f;
 
 	BOOL FindChildByInfo(
 		IAccessible* paccParent,
@@ -238,7 +238,7 @@ namespace ui_test
 		uiblink = false;
 	}
 
-	void SetErrAcceptance( float errApt )
+	void SetErrAcceptance( double errApt )
 	{
 		errAcceptance = errApt;
 	}
@@ -401,15 +401,8 @@ namespace ui_test
 		double minVal, maxVal;
 		cv::Point minLoc, maxLoc;
 		cv::minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc);
-		if(minVal >= errAcceptance)
-			return uiRect;
-		uiRect = cv::Rect(minLoc.x, minLoc.y, templ.cols, templ.rows);	
-
-		if(displaymatch)
-		{
-			cv::rectangle(wndImg, uiRect, cv::Scalar(0.0f, 0.0f, 255.0f, 0.0f), 2);
-			DisPlayImg(wndImg);
-		}
+		if(minVal < errAcceptance)
+			uiRect = cv::Rect(minLoc.x, minLoc.y, templ.cols, templ.rows);	
 
 		return uiRect;
 	}
@@ -419,12 +412,9 @@ namespace ui_test
 		cv::Rect UIRect;
 		RECT wndRect;
 		GetWindowRect(hWnd, &wndRect);
-		int n = 10; // 失败重试次数
+		int n = 5; // 失败重试次数
 		while(n--)
 		{
-			// 匹配UI
-			//SetForegroundWindow(hwnd);
-			//Sleep(200);
 			UIRect = FindUIRect(uiImgName);
 			if(UIRect.width && InRect(UIRect.x, UIRect.y, wndRect))
 			{
@@ -443,9 +433,40 @@ namespace ui_test
 			Log(UTMESSAGE, "Expected ui doesn't match while matching img:", uiImgName);
 			Log(UTMESSAGE, "Saved current screen to screenshot.bmp.");
 			cv::imwrite("screenshot.bmp", TakeScreenShot());
+			UIRect.width = 0;
 		}
 
 		return UIRect;
+	}
+
+	int AvoidUI(const char * uiImgName)
+	{
+		cv::Rect UIRect;
+		int n = 5; // 失败重试次数
+		while(n--)
+		{
+			UIRect = FindUIRect(uiImgName);
+			if(UIRect.width)
+			{
+				Log(UTMESSAGE, "Tried to avoid ui failed, retrying...:", uiImgName);
+				Sleep(1000);
+			}
+			else
+			{
+				Log(UTMESSAGE, "Ui avoid:", uiImgName);
+				break;
+			}
+		}
+
+		if(UIRect.width)
+		{
+			Log(UTMESSAGE, "Expected ui doesn't avoid:", uiImgName);
+			Log(UTMESSAGE, "Saved current screen to screenshot.bmp.");
+			cv::imwrite("screenshot.bmp", TakeScreenShot());
+			return 0;
+		}
+
+		return 1;
 	}
 
 	void MouseClick()
@@ -463,19 +484,23 @@ namespace ui_test
 		SendInput(1, &Input, sizeof(INPUT));
 	}
 
-	void PressKey(WORD vk)
+	void KeyDown(WORD vk)
 	{
 		INPUT Input = {0};
 
 		Input.type = INPUT_KEYBOARD;
 		Input.ki.wVk = vk;
 		SendInput(1, &Input, sizeof(INPUT));
+	}
 
-		ZeroMemory(&Input,sizeof(INPUT));
+	void KeyUp(WORD vk)
+	{
+		INPUT Input = {0};
+
 		Input.type = INPUT_KEYBOARD;
+		Input.ki.wVk = vk;
 		Input.ki.dwFlags = KEYEVENTF_KEYUP;
 		SendInput(1, &Input, sizeof(INPUT));
-		//Sleep(100);
 	}
 
 	void Init()
@@ -512,6 +537,7 @@ namespace ui_test
 		ofs.open("ui_test.log", std::ios::app);
 		ofs << line << std::endl;
 		ofs.close();
+		std::cout << line << std::endl;
 	}
 
 	bool inline InRect(int x, int y, const RECT &rect)

@@ -1,45 +1,6 @@
 #include "stdafx.h"
 #include "ui_test_util.h"
-
-
-#define MAX_LOADSTRING 100
-#define IDM_EXIT 105
-
-// Global Variables:
-HINSTANCE tphInst;								// current instance
-HWND tphWnd;                                       // window handler
-TCHAR szTitle[] = "GUI_TEST";					// The title bar text
-TCHAR szWindowClass[] = "GUI_TEST";			// the main window class name
-HWND curWnd;
-lua_State * l;                           
-
-// Forward declarations of functions included in this code module:
-ATOM				MyRegisterClass(HINSTANCE hInstance);
-BOOL				InitInstance(HINSTANCE, int);
-LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
-
-// Paint function
-cv::Rect UIRect;
-RECT circle;
-void Clear(HDC hdc, HWND hWnd);
-void DrawRect(HDC hdc);
-void DrawCircle(HDC hdc);
-void RePaint();
-
-// Run script function
-DWORD WINAPI UiTestMainFunc(LPVOID script);
-
-// Script interface
-int LRunExe(lua_State * ls);                // lua func RunExe(exePath) return 0 if failed
-int LClickBtn(lua_State * ls);				// lua func ClickBtn(imgName, expectUI) return 0 if failed
-int LDoubleClick(lua_State * ls);           // lua func DoubleClick(imgName, expectUI) return 0 if failed
-int LMouseMove(lua_State * ls);				// lua func MouseMove(imgName) return 0 if failed
-int LPressKey(lua_State * ls);				// lua func PressKey(virtualKey) return 0 if failed
-int LExpectUI(lua_State * ls);				// lua func ExpectUI(imgName) return 0 if failed
-int LExpectWnd(lua_State * ls);				// lua func ExpectWnd(wndName) return 0 if failed
-int LSleep(lua_State * ls);					// lua func Sleep(milliseconds) return nothing
-int LSetErrAcceptance(lua_State * ls);		// lua func SetErrAcceptance(OpenCVMatchErrAcceptance) 0 ~ 5e8 return nothing
+#include "ui_test.h"
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
@@ -64,6 +25,9 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	hAccelTable = LoadAccelerators(hInstance, NULL);
 
+	// Create a console to present message
+	if(AllocConsole())
+		freopen("CONOUT$", "w", stdout);
 	// Create a thread to run script
 	if(!lpCmdLine || !(*lpCmdLine))
 	{
@@ -89,6 +53,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		}
 	}
 
+	system("pause");
 	return (int) msg.wParam;
 }
 
@@ -163,8 +128,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		Clear(hdc, hWnd);
-		DrawRect(hdc);
-		DrawCircle(hdc);
+		if(UIRect.width)
+		{
+			HBRUSH hBrush = CreateSolidBrush(RGB(255,0,255));
+			HPEN hpen = CreatePen(PS_SOLID, 6, RGB(255, 0, 0));
+			SelectObject(hdc, hBrush);
+			SelectObject(hdc, hpen);
+			Rectangle(hdc, UIRect.x, UIRect.y, UIRect.x + UIRect.width, UIRect.y + UIRect.height);
+			DeleteObject(hBrush);
+			DeleteObject(hpen);
+		}
+		if((circle.right - circle.left) != 0)
+		{
+			HBRUSH hBrush = CreateSolidBrush(RGB(255,0,255));
+			HPEN hpen = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
+			SelectObject(hdc, hBrush);
+			SelectObject(hdc, hpen);
+			Ellipse(hdc, circle.left, circle.top, circle.right, circle.bottom);
+			DeleteObject(hBrush);
+			DeleteObject(hpen);
+		}
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_DESTROY:
@@ -185,32 +168,32 @@ void Clear(HDC hdc, HWND hWnd)
 	DeleteObject(hBrush);
 }
 
-void DrawRect(HDC hdc)
+void DrawRect(cv::Rect rect)
 {
-	if(UIRect.width)
-	{
-		HBRUSH hBrush = CreateSolidBrush(RGB(255,0,255));
-		HPEN hpen = CreatePen(PS_SOLID, 6, RGB(255, 0, 0));
-		SelectObject(hdc, hBrush);
-		SelectObject(hdc, hpen);
-		Rectangle(hdc, UIRect.x, UIRect.y, UIRect.x + UIRect.width, UIRect.y + UIRect.height);
-		DeleteObject(hBrush);
-		DeleteObject(hpen);
-	}
+	UIRect = rect;
+	circle.left = circle.right;
+	SetForegroundWindow(tphWnd);
+	RePaint();
+	Sleep(1000);
+	UIRect.width = 0;
+	RePaint();
+	SetForegroundWindow(curWnd);
+	Sleep(1000);
 }
 
-void DrawCircle(HDC hdc)
+void DrawCircle(int x, int y)
 {
-	if((circle.right - circle.left) != 0)
-	{
-		HBRUSH hBrush = CreateSolidBrush(RGB(255,0,255));
-		HPEN hpen = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
-		SelectObject(hdc, hBrush);
-		SelectObject(hdc, hpen);
-		Ellipse(hdc, circle.left, circle.top, circle.right, circle.bottom);
-		DeleteObject(hBrush);
-		DeleteObject(hpen);
-	}
+	circle.left = x - 20;
+	circle.right = x + 20;
+	circle.top = y - 20;
+	circle.bottom = y + 20;
+	UIRect.width = 0;
+	SetForegroundWindow(tphWnd);
+	RePaint();
+	Sleep(1000);
+	circle.right = circle.left;
+	RePaint();
+	SetForegroundWindow(curWnd);
 }
 
 int LRunExe(lua_State * ls)
@@ -234,45 +217,8 @@ int LClickBtn(lua_State * ls)
 	const char * btnImgName = lua_tostring(ls, 1);
 	const char * expectedUI = lua_tostring(ls, 2);
 
-	RePaint();
-
-	UIRect = ui_test::MatchUI(curWnd, btnImgName);
-	if(UIRect.width)
-	{	
-		RePaint();
-		Sleep(1000);
-		int mouse_x = UIRect.x + UIRect.width / 2, mouse_y = UIRect.y + UIRect.height / 2;
-		int n = 5;
-		while(n--)
-		{	
-			SetCursorPos(mouse_x, mouse_y);
-			UIRect.width = 0;
-			ui_test::MouseClick();
-			circle.left = mouse_x - 20;
-			circle.right = mouse_x + 20;
-			circle.top = mouse_y - 20;
-			circle.bottom = mouse_y + 20;
-			RePaint();
-			Sleep(1000);
-			circle.left = circle.right;
-			RePaint();
-			UIRect = ui_test::MatchUI(curWnd, expectedUI);
-			if(UIRect.width)
-				break;
-			else
-				ui_test::Log(ui_test::UTMESSAGE, "Clicking maybe failed, retrying...");
-		}
-		if(n)
-			lua_pushinteger(l, 1);	
-		else
-			lua_pushinteger(l, 0);	
-		
-	}
-	else
-		lua_pushinteger(l, 0);
-	circle.right = circle.left;
-	UIRect.width = 0;
-	RePaint();
+//	int flag = ClickBtn(btnImgName, expectedUI);
+	//lua_pushinteger(l, flag);
 	return 1;
 }
 
@@ -311,7 +257,7 @@ int LDoubleClick(lua_State * ls)
 			else
 				ui_test::Log(ui_test::UTMESSAGE, "Clicking maybe failed, retrying...");
 		}
-		if(n)
+		if(n != -1)
 			lua_pushinteger(l, 1);	
 		else
 			lua_pushinteger(l, 0);	
@@ -349,56 +295,24 @@ int LMouseMove(lua_State * ls)
 int LPressKey(lua_State * ls)
 {
 	WORD virtualKey = lua_tointeger(ls, 1);
-	ui_test::PressKey(virtualKey);
+	ui_test::KeyDown(virtualKey);
+	ui_test::KeyUp(virtualKey);
 	return 0;
 }
 
 int LExpectUI(lua_State * ls)
 {
-	const char * expUiImg = lua_tostring(ls, 2);
-
-	RePaint();
-
-	UIRect = ui_test::MatchUI(curWnd, expUiImg);
-
-	if(UIRect.width)
-	{
-		RePaint();
-		Sleep(1000);
-	}
-
-	lua_pushinteger(l, UIRect.width);
-	UIRect.width = 0;
-	RePaint();
+	const char * expUiImg = lua_tostring(ls, 1);
+	int r = Expect(expUiImg);
+	lua_pushinteger(l, r);
 	return 1;
 }
 
 int LExpectWnd(lua_State * ls)
 {
-	HWND hWnd;
 	const char * wndName = lua_tostring(ls, 1);
-	int n = 10;
-	while(n--)
-	{
-		hWnd = FindWindow(NULL, wndName);
-		if(!hWnd)
-		{
-			ui_test::Log(ui_test::UTMESSAGE, "Cannot find window, retrying...:", wndName);
-			Sleep(1000);
-		}
-		else
-			break;
-	}
-	if(n)
-	{
-		curWnd = hWnd;
-		lua_pushinteger(l, 1);
-	}
-	else
-	{
-		ui_test::Log(ui_test::UTERROR, "Cannot find window:", wndName);
-		lua_pushinteger(l, 0);
-	}
+	int r = ExpectWnd(wndName);
+	lua_pushinteger(l, r);
 	return 1;
 }
 
@@ -411,14 +325,148 @@ int LSleep(lua_State * ls)
 
 int LSetErrAcceptance(lua_State * ls)
 {
-	float n = static_cast<float>(lua_tonumber(ls, 1));
-	ui_test::SetErrAcceptance(n);
+	double n = static_cast<double>(lua_tonumber(ls, 1));
+	SetErrAcceptance(n);
 	return 0;
+}
+
+int ClickBtn(const char * btnImgName, int x, int y, const char * expectedUI, action act/* = EXPRCT*/)
+{
+	cv::Rect rect = ui_test::MatchUI(curWnd, btnImgName);
+	if(rect.width)
+	{	
+		DrawRect(rect);
+		int mouse_x = UIRect.x + x, mouse_y = UIRect.y + y;
+		int n = 5;
+		while(n--)
+		{	
+			SetCursorPos(mouse_x, mouse_y);
+			ui_test::MouseClick();
+			DrawCircle(mouse_x, mouse_y);
+			if(act == EXPRCT)
+			{
+				rect = ui_test::MatchUI(curWnd, expectedUI);
+				if(rect.width)
+				{
+					DrawRect(rect);
+					break;
+				}
+				else
+					ui_test::Log(ui_test::UTMESSAGE, "Clicking maybe failed, retrying...");
+			}
+			else if(act == AVOID)
+			{
+				if(!ui_test::AvoidUI(expectedUI))
+					ui_test::Log(ui_test::UTMESSAGE, "Clicking maybe failed, retrying...");
+				else
+					break;
+			}
+		}
+		if(n != -1)
+			return 1;	
+		else
+			return 0;	
+
+	}
+	else
+		return 0;
+}
+
+int Click(const char * wndName, int x, int y, const char * uiFile, action act/* = EXPRCT*/)
+{
+	HWND hWnd = FindWindow(NULL, wndName);
+	RECT wndRect;
+	GetWindowRect(hWnd, &wndRect);
+	int mouse_x = wndRect.left + x, mouse_y = wndRect.top + y;
+	int n = 5; //  ß∞‹÷ÿ ‘¥Œ ˝
+	while(n--)
+	{	
+		SetCursorPos(mouse_x, mouse_y);
+		ui_test::MouseClick();
+		DrawCircle(mouse_x, mouse_y);
+		if(act == EXPRCT)
+		{
+			cv::Rect rect = ui_test::MatchUI(curWnd, uiFile);
+			if(rect.width)
+			{
+				DrawRect(rect);
+				break;
+			}
+			else
+				ui_test::Log(ui_test::UTMESSAGE, "Clicking maybe failed, retrying...");
+		}
+		else if(act == AVOID)
+		{
+			if(!ui_test::AvoidUI(uiFile))
+				ui_test::Log(ui_test::UTMESSAGE, "Clicking maybe failed, retrying...");
+			else
+				break;
+		}
+	}
+	if(n != -1)
+		return 1;	
+	else
+		return 0;
+}
+
+int Expect(const char * uiFile)
+{
+	cv::Rect rect = ui_test::MatchUI(curWnd, uiFile);
+	if(rect.width)
+	{
+		DrawRect(rect);
+		return 1;
+	}
+	else
+		return 0;
+}
+
+int ExpectWnd(const char * wndName)
+{
+	if(!wndName)
+	{
+		curWnd = GetDesktopWindow();
+		return 1;
+	}
+
+	HWND hWnd;
+	int n = 5;
+	while(n--)
+	{
+		hWnd = FindWindow(NULL, wndName);
+		if(!hWnd)
+		{
+			ui_test::Log(ui_test::UTMESSAGE, "Cannot find window, retrying...:", wndName);
+			Sleep(1000);
+		}
+		else
+			break;
+	}
+	if(n != -1)
+	{
+		curWnd = hWnd;
+		return 1;
+	}
+	else
+	{
+		ui_test::Log(ui_test::UTERROR, "Cannot find window:", wndName);
+		return 0;
+	}
+}
+
+void SetErrAcceptance(double errAcpt)
+{
+	ui_test::SetErrAcceptance(errAcpt);
+}
+
+void RestoreWindow(const char * wndName)
+{
+	HWND hWnd = FindWindow(NULL, wndName);
+	ShowWindow(hWnd, SW_RESTORE);
 }
 
 void RePaint()
 {
-	//SetForegroundWindow(tphWnd);
 	SetWindowPos(tphWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 	InvalidateRect(tphWnd, NULL, TRUE);
 	UpdateWindow(tphWnd);
@@ -433,16 +481,8 @@ DWORD WINAPI UiTestMainFunc(LPVOID script)
 	luaL_openlibs(l);
 	if(l == NULL) 
 		return 1; 
-	int ret = luaL_loadfile(l, LPTSTR(script));
-	if(ret != 0) 
-	{
-		const char *msg = lua_tostring(l, -1);
-		Log(ui_test::UTERROR, msg);
-		lua_pop(l, 1);
-		return 1;
-	}
 
-	lua_pushcfunction(l, LRunExe);        
+	/*lua_pushcfunction(l, LRunExe);        
 	lua_setglobal(l, "RunExe");  
 	lua_pushcfunction(l, LClickBtn);        
 	lua_setglobal(l, "ClickBtn");  
@@ -459,9 +499,9 @@ DWORD WINAPI UiTestMainFunc(LPVOID script)
 	lua_pushcfunction(l, LSleep);        
 	lua_setglobal(l, "Sleep");
 	lua_pushcfunction(l, LSetErrAcceptance);        
-	lua_setglobal(l, "SetErrAcceptance");
+	lua_setglobal(l, "SetErrAcceptance");*/
 
-	ret = lua_pcall(l, 0, 0, 0) ;
+	int ret = luaL_dofile(l, LPTSTR(script));
 	if(ret != 0) 
 	{
 		const char *msg = lua_tostring(l, -1);
